@@ -1,6 +1,7 @@
 import os
 import uuid
 import logging
+from app.config import settings
 import shutil
 from typing import Optional
 from flask import Blueprint, request, jsonify, render_template, abort, current_app
@@ -97,7 +98,7 @@ def upload_rfp():
         # Process document (would use async task queue in production)
         success, message = process_document(rfp.id, db.session)
         if not success:
-            logger.error(f"Error processing RFP document: {message}")
+            logging.error(f"Error processing RFP document: {message}")
             rfp.processing_errors = message
             db.session.commit()
         
@@ -161,7 +162,7 @@ def upload_bid():
         # Process document in background
         success, message = process_document(bid.id, db.session, is_bid=True)
         if not success:
-            logger.error(f"Error processing bid document: {message}")
+            logging.error(f"Error processing bid document: {message}")
             bid.processing_errors = message
             db.session.commit()
         
@@ -329,3 +330,73 @@ def get_bid_comparison(rfp_id):
             comparison_data["bids"].append(bid_data)
     
     return jsonify(comparison_data)
+
+# Chatbot API
+@main_bp.route('/api/chatbot', methods=['POST'])
+def chatbot():
+    """
+    Chatbot API for user questions about RFPs and bids.
+    """
+    from app.utils.openai_utils import analyze_with_openai
+    
+    try:
+        data = request.json
+        if not data or 'message' not in data:
+            return jsonify({'error': 'No message provided'}), 400
+        
+        user_message = data['message']
+        
+        # Create a system prompt
+        system_prompt = """
+        You are UniSphere Assistant, an AI expert in government procurement, RFPs (Request for Proposals), 
+        and bid analysis. Your purpose is to help users understand procurement processes, interpret 
+        requirements, and evaluate competitive bids. Keep responses concise and focused on procurement topics.
+        
+        You can help with:
+        - Explaining procurement terms and processes
+        - Interpreting RFP requirements
+        - Understanding bid evaluation criteria
+        - Clarifying compliance issues
+        - Suggesting procurement best practices
+        
+        If asked about information outside your scope, politely redirect to procurement-related topics.
+        """
+        
+        # Create the full prompt for OpenAI
+        prompt = f"""
+        {system_prompt}
+        
+        User question: {user_message}
+        
+        Provide a helpful, concise, and informative response.
+        """
+        
+        # Check if OpenAI API key is available
+        if settings.OPENAI_API_KEY:
+            # Get response from OpenAI
+            response = analyze_with_openai(prompt, "", None)
+            if isinstance(response, str):
+                return jsonify({'response': response})
+            else:
+                return jsonify({'response': str(response)})
+        else:
+            # Fallback responses if OpenAI API is not available
+            fallback_responses = [
+                "As your procurement assistant, I'd recommend carefully evaluating vendor compliance with all technical specifications listed in the RFP.",
+                "When comparing bids, focus on both price and the vendor's proven experience with similar projects.",
+                "Requirement prioritization is crucial. I suggest categorizing requirements as 'must-have', 'should-have', and 'nice-to-have'.",
+                "For government connectivity projects, ensure vendors demonstrate compliance with relevant security standards and regulations.",
+                "The most successful RFPs clearly articulate technical requirements while allowing vendors to propose innovative approaches.",
+                "When evaluating bids, consider both immediate costs and long-term total cost of ownership.",
+                "Gap analysis between requirements and vendor proposals helps identify potential risks in the procurement process.",
+                "I'd recommend documenting all vendor communications during the RFP process to maintain transparency and compliance.",
+                "For technical evaluations, consider forming a committee with subject matter experts from different departments.",
+                "UniSphere can help you analyze vendor bids against RFP requirements to identify the best match for your project needs."
+            ]
+            
+            import random
+            return jsonify({'response': random.choice(fallback_responses)})
+            
+    except Exception as e:
+        logging.error(f"Chatbot error: {str(e)}")
+        return jsonify({'error': 'An error occurred processing your request'}), 500

@@ -703,10 +703,11 @@ function setupEventListeners() {
   }
   
   // Handle Export Report button click
-  const exportReportBtn = document.getElementById('exportReportBtn');
+  // Handle Export Report button click
+  const exportReportBtn = document.getElementById("exportReportBtn");
   if (exportReportBtn) {
-    exportReportBtn.addEventListener('click', function() {
-      showToast('Report export functionality is in development.', 'info');
+    exportReportBtn.addEventListener("click", function() {
+      exportReportToPDF();
     });
   }
   
@@ -733,4 +734,198 @@ function setupEventListeners() {
       });
     });
   });
+}
+
+/**
+ * Export the current report to PDF
+ */
+function exportReportToPDF() {
+  try {
+    // Initialize jsPDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+    
+    // Show loading toast
+    showToast('Generating PDF report...', 'info');
+    
+    // Get RFP title
+    const rfpTitle = document.querySelector('h2').innerText;
+    const rfpAgency = document.querySelector('.lead.text-muted').innerText.split('|')[0].trim();
+    
+    // Set fonts
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(60, 120, 216); // Primary blue color
+    
+    // Add title
+    doc.text('UniSphere Analysis Report', 15, 20);
+    
+    // Add RFP details
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text(rfpTitle, 15, 30);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    doc.text(`Agency: ${rfpAgency}`, 15, 40);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 15, 45);
+    
+    // Add divider
+    doc.setDrawColor(200, 200, 200);
+    doc.line(15, 50, 195, 50);
+    
+    // Add bid summary section
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('Bid Summary', 15, 60);
+    
+    // Get bid data
+    const bidSummary = document.querySelector('#bid-summary-content');
+    let yPos = 70;
+    
+    if (bidSummary && !bidSummary.querySelector('#no-bid-summary').classList.contains('d-none')) {
+      // Get all bid items
+      const bidItems = bidSummary.querySelectorAll('.list-group-item');
+      
+      bidItems.forEach((item, index) => {
+        const vendorName = item.querySelector('strong').innerText;
+        const score = item.querySelector('.badge').innerText;
+        const rank = index + 1;
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(12);
+        doc.text(`${rank}. ${vendorName}`, 20, yPos);
+        
+        // Score with color
+        const scoreNumber = parseInt(score, 10);
+        if (scoreNumber >= 80) {
+          doc.setTextColor(40, 167, 69); // success green
+        } else if (scoreNumber >= 60) {
+          doc.setTextColor(255, 193, 7); // warning yellow
+        } else {
+          doc.setTextColor(220, 53, 69); // danger red
+        }
+        
+        doc.text(`Score: ${score}`, 150, yPos);
+        doc.setTextColor(0, 0, 0); // reset color
+        
+        yPos += 10;
+        
+        // Add details if expanded
+        const detailsId = item.getAttribute('href');
+        const details = document.querySelector(detailsId);
+        
+        if (details && details.classList.contains('show')) {
+          // Add strengths
+          const strengths = details.querySelectorAll('.strength-item');
+          if (strengths.length > 0) {
+            doc.setFont('helvetica', 'bold');
+            doc.text('Strengths:', 25, yPos);
+            yPos += 5;
+            
+            doc.setFont('helvetica', 'normal');
+            strengths.forEach(strength => {
+              // Check if we need a new page
+              if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+              }
+              
+              const strengthText = strength.innerText;
+              // Limit text length and add ellipsis if too long
+              const truncatedText = strengthText.length > 70 ? strengthText.substring(0, 70) + '...' : strengthText;
+              
+              doc.text(`• ${truncatedText}`, 30, yPos);
+              yPos += 5;
+            });
+            yPos += 5;
+          }
+          
+          // Add weaknesses
+          const weaknesses = details.querySelectorAll('.weakness-item');
+          if (weaknesses.length > 0) {
+            // Check if we need a new page
+            if (yPos > 270) {
+              doc.addPage();
+              yPos = 20;
+            }
+            
+            doc.setFont('helvetica', 'bold');
+            doc.text('Weaknesses:', 25, yPos);
+            yPos += 5;
+            
+            doc.setFont('helvetica', 'normal');
+            weaknesses.forEach(weakness => {
+              // Check if we need a new page
+              if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+              }
+              
+              const weaknessText = weakness.innerText;
+              // Limit text length and add ellipsis if too long
+              const truncatedText = weaknessText.length > 70 ? weaknessText.substring(0, 70) + '...' : weaknessText;
+              
+              doc.text(`• ${truncatedText}`, 30, yPos);
+              yPos += 5;
+            });
+            yPos += 5;
+          }
+        }
+        
+        yPos += 5;
+      });
+    } else {
+      doc.setFont('helvetica', 'italic');
+      doc.text('No bids available', 20, yPos);
+      yPos += 10;
+    }
+    
+    // Get chart as image
+    const bidComparisonChart = document.getElementById('bidComparisonChart');
+    if (bidComparisonChart) {
+      // Check if we need a new page
+      if (yPos > 180) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      // Add chart title
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('Bid Score Comparison', 15, yPos);
+      yPos += 10;
+      
+      // Convert chart to image and add to PDF
+      html2canvas(bidComparisonChart).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        
+        // Add the chart image
+        doc.addImage(imgData, 'PNG', 15, yPos, 180, 90);
+        
+        // Save the PDF
+        doc.save(`UniSphere_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+        
+        // Show success toast
+        showToast('Report successfully exported as PDF', 'success');
+      }).catch(err => {
+        console.error('Error generating chart image:', err);
+        // Save the PDF without the chart
+        doc.save(`UniSphere_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+        showToast('Report exported as PDF (without chart visualization)', 'warning');
+      });
+    } else {
+      // Save the PDF without the chart
+      doc.save(`UniSphere_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+      showToast('Report successfully exported as PDF', 'success');
+    }
+  } catch (error) {
+    console.error('Error exporting PDF:', error);
+    showToast('Failed to export PDF. Please try again.', 'danger');
+  }
 }

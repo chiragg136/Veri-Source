@@ -17,6 +17,7 @@ class Settings:
     
     # LLM Models
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")
     HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
     
     # Document Storage
