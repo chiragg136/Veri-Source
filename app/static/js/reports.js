@@ -703,11 +703,52 @@ function setupEventListeners() {
   }
   
   // Handle Export Report button click
-  // Handle Export Report button click
   const exportReportBtn = document.getElementById("exportReportBtn");
   if (exportReportBtn) {
     exportReportBtn.addEventListener("click", function() {
       exportReportToPDF();
+    });
+  }
+  
+  // Handle Generate Report button click (One-Click Summary)
+  const generateReportBtn = document.getElementById("generateReportBtn");
+  if (generateReportBtn) {
+    generateReportBtn.addEventListener("click", function() {
+      const modal = new bootstrap.Modal(document.getElementById("infographicReportModal"));
+      modal.show();
+      generateInfographicReport(rfpId);
+    });
+  }
+  
+  // Handle Print Report button click
+  const printReportBtn = document.getElementById("printReportBtn");
+  if (printReportBtn) {
+    printReportBtn.addEventListener("click", function() {
+      window.print();
+    });
+  }
+  const exportReportBtn = document.getElementById("exportReportBtn");
+  if (exportReportBtn) {
+    exportReportBtn.addEventListener("click", function() {
+      exportReportToPDF();
+    });
+  }
+  
+  // Handle Generate Report button click (One-Click Summary)
+  const generateReportBtn = document.getElementById("generateReportBtn");
+  if (generateReportBtn) {
+    generateReportBtn.addEventListener("click", function() {
+      const modal = new bootstrap.Modal(document.getElementById('infographicReportModal'));
+      modal.show();
+      generateInfographicReport(rfpId);
+    });
+  }
+  
+  // Handle Print Report button click
+  const printReportBtn = document.getElementById("printReportBtn");
+  if (printReportBtn) {
+    printReportBtn.addEventListener("click", function() {
+      window.print();
     });
   }
   
@@ -928,4 +969,371 @@ function exportReportToPDF() {
     console.error('Error exporting PDF:', error);
     showToast('Failed to export PDF. Please try again.', 'danger');
   }
+}
+
+/**
+ * Generate an infographic report for the given RFP
+ * @param {number} rfpId - ID of the RFP
+ */
+async function generateInfographicReport(rfpId) {
+  try {
+    const reportContent = document.getElementById('infographicReportContent');
+    const loadingIndicator = document.getElementById('infographic-loading');
+    
+    // Show loading indicator
+    loadingIndicator.classList.remove('d-none');
+    
+    // Fetch the report data
+    const response = await fetch(`/api/reports/generate-summary/${rfpId}`);
+    if (!response.ok) {
+      throw new Error('Failed to generate infographic report');
+    }
+    
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Unknown error generating report');
+    }
+    
+    // Hide loading indicator
+    loadingIndicator.classList.add('d-none');
+    
+    // Build and display the report
+    const report = data.report;
+    
+    // Create the report HTML content
+    let reportHTML = `
+      <div class="container-fluid py-4">
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="infographic-section">
+              <h2 class="text-center mb-4">${report.rfp.title}</h2>
+              <h5 class="text-center text-muted mb-4">${report.rfp.agency} | Project ID: ${report.rfp.project_id}</h5>
+              <div class="row text-center">
+                <div class="col-md-4 mb-4">
+                  <div class="stat-circle stat-circle-primary mx-auto">
+                    <div class="stat-number">${report.summary.total_bids}</div>
+                    <div class="stat-label">Vendor Bids</div>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                  <div class="stat-circle stat-circle-info mx-auto">
+                    <div class="stat-number">${report.summary.total_requirements}</div>
+                    <div class="stat-label">Requirements</div>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                  <div class="stat-circle stat-circle-warning mx-auto">
+                    <div class="stat-number">${report.summary.total_specifications}</div>
+                    <div class="stat-label">Tech Specs</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <div class="infographic-section h-100">
+              <h4 class="mb-4">Requirements by Category</h4>
+              <div class="row">`;
+    
+    // Add requirement categories
+    for (const [category, count] of Object.entries(report.summary.requirement_categories)) {
+      const percentage = Math.round((count / report.summary.total_requirements) * 100);
+      reportHTML += `
+        <div class="col-md-6 mb-3">
+          <h6>${category}</h6>
+          <div class="progress" style="height: 25px;">
+            <div class="progress-bar bg-primary" role="progressbar" style="width: ${percentage}%;" 
+                aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100">
+              ${count} (${percentage}%)
+            </div>
+          </div>
+        </div>`;
+    }
+    
+    reportHTML += `
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="infographic-section h-100">
+              <h4 class="mb-4">Requirements by Priority</h4>
+              <div class="row">`;
+    
+    // Add priority distribution
+    const priorityColors = {
+      'Must-have': 'bg-danger',
+      'Should-have': 'bg-warning',
+      'Nice-to-have': 'bg-info'
+    };
+    
+    for (const [priority, count] of Object.entries(report.summary.priority_distribution)) {
+      const percentage = Math.round((count / report.summary.total_requirements) * 100);
+      reportHTML += `
+        <div class="col-12 mb-3">
+          <div class="d-flex justify-content-between">
+            <h6>${priority}</h6>
+            <span>${count} (${percentage}%)</span>
+          </div>
+          <div class="progress" style="height: 25px;">
+            <div class="progress-bar ${priorityColors[priority] || 'bg-secondary'}" role="progressbar" 
+                style="width: ${percentage}%;" aria-valuenow="${percentage}" aria-valuemin="0" aria-valuemax="100">
+            </div>
+          </div>
+        </div>`;
+    }
+    
+    reportHTML += `
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Bidder Comparison Section -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="infographic-section">
+              <h4 class="mb-4">Vendor Bid Comparison</h4>
+              <div class="row">`;
+    
+    // Add bidder cards
+    if (report.bids && report.bids.length > 0) {
+      report.bids.forEach(bid => {
+        const isTopVendor = report.top_vendor && report.top_vendor.id === bid.id;
+        reportHTML += `
+          <div class="col-md-4 mb-3">
+            <div class="bidder-card ${isTopVendor ? 'top-vendor-card' : ''}">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">${bid.vendor_name}</h5>
+                ${isTopVendor ? '<span class="badge bg-warning">Top Vendor</span>' : ''}
+              </div>
+              
+              <div class="d-flex justify-content-center mb-4">
+                <div class="stat-circle ${getScoreCircleClass(bid.total_score || 0)}">
+                  <div class="stat-number">${Math.round(bid.total_score || 0)}</div>
+                  <div class="stat-label">Overall Score</div>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <h6>Risk Level</h6>
+                <div class="d-flex align-items-center">
+                  <span class="risk-indicator risk-${bid.risk.level.toLowerCase()}"></span>
+                  <span class="text-capitalize">${bid.risk.level}</span>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <h6>Sentiment</h6>
+                <div class="d-flex align-items-center">
+                  <div class="progress flex-grow-1 me-2" style="height: 15px;">
+                    <div class="progress-bar ${getSentimentBarClass(bid.sentiment.score || 0)}" 
+                        role="progressbar" style="width: ${(bid.sentiment.score || 0) * 20}%;">
+                    </div>
+                  </div>
+                  <span>${bid.sentiment.score ? bid.sentiment.score.toFixed(1) : 'N/A'}</span>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <h6>Key Strengths</h6>
+                <ul class="list-unstyled">
+                  ${bid.strengths.slice(0, 2).map(strength => `<li><small>• ${strength}</small></li>`).join('')}
+                </ul>
+              </div>
+              
+              <div>
+                <h6>Key Weaknesses</h6>
+                <ul class="list-unstyled">
+                  ${bid.weaknesses.slice(0, 2).map(weakness => `<li><small>• ${weakness}</small></li>`).join('')}
+                </ul>
+              </div>
+            </div>
+          </div>`;
+      });
+    } else {
+      reportHTML += `
+        <div class="col-12 text-center py-4">
+          <i class="fas fa-file-signature fa-3x text-muted mb-3"></i>
+          <h5>No Bids Available</h5>
+          <p class="text-muted">Upload vendor bids to enable comparison</p>
+        </div>`;
+    }
+    
+    reportHTML += `
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Security & Compliance Section -->
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <div class="infographic-section h-100">
+              <h4 class="mb-4">Framework Compliance</h4>`;
+    
+    if (Object.keys(report.security.framework_compliance).length > 0) {
+      reportHTML += `<div class="row">`;
+      
+      for (const [framework, data] of Object.entries(report.security.framework_compliance)) {
+        reportHTML += `
+          <div class="col-md-6 mb-3">
+            <h6>${framework.toUpperCase()}</h6>
+            <div class="progress" style="height: 25px;">
+              <div class="progress-bar bg-success" role="progressbar" 
+                  style="width: ${data.average_score}%;" aria-valuenow="${data.average_score}" 
+                  aria-valuemin="0" aria-valuemax="100">
+                ${data.average_score.toFixed(1)}%
+              </div>
+            </div>
+          </div>`;
+      }
+      
+      reportHTML += `</div>`;
+    } else {
+      reportHTML += `
+        <div class="text-center py-4">
+          <i class="fas fa-shield-alt fa-3x text-muted mb-3"></i>
+          <p>No framework compliance data available yet</p>
+        </div>`;
+    }
+    
+    reportHTML += `
+            </div>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="infographic-section h-100">
+              <h4 class="mb-4">Risk Assessment</h4>
+              <div class="row text-center">
+                <div class="col-md-4 mb-3">
+                  <div class="stat-circle stat-circle-danger mx-auto">
+                    <div class="stat-number">${report.security.risk_levels.high}</div>
+                    <div class="stat-label">High Risk</div>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <div class="stat-circle stat-circle-warning mx-auto">
+                    <div class="stat-number">${report.security.risk_levels.medium}</div>
+                    <div class="stat-label">Medium Risk</div>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <div class="stat-circle stat-circle-success mx-auto">
+                    <div class="stat-number">${report.security.risk_levels.low}</div>
+                    <div class="stat-label">Low Risk</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sentiment & Recommendations Section -->
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <div class="infographic-section h-100">
+              <h4 class="mb-4">Sentiment Analysis</h4>
+              <div class="row mb-4">
+                <div class="col-12 text-center">
+                  <div class="stat-circle stat-circle-info stat-circle-large mx-auto">
+                    <div class="stat-number">${report.sentiment.average_score.toFixed(1)}</div>
+                    <div class="stat-label">Average Score</div>
+                  </div>
+                  <div class="mt-2 text-muted small">
+                    Confidence: ${report.sentiment.confidence.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+              
+              <h6 class="mb-3">Key Indicators</h6>
+              <div>`;
+    
+    if (report.sentiment.keyword_indicators && report.sentiment.keyword_indicators.length > 0) {
+      report.sentiment.keyword_indicators.forEach(indicator => {
+        reportHTML += `<span class="sentiment-indicator">${indicator}</span>`;
+      });
+    } else {
+      reportHTML += `<p class="text-muted">No key indicators available</p>`;
+    }
+    
+    reportHTML += `
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="infographic-section h-100">
+              <h4 class="mb-4">Recommendations</h4>`;
+    
+    if (report.recommendations && report.recommendations.length > 0) {
+      report.recommendations.forEach(recommendation => {
+        reportHTML += `<div class="recommendation-item mb-3">${recommendation}</div>`;
+      });
+    } else {
+      reportHTML += `
+        <div class="text-center py-4">
+          <i class="fas fa-lightbulb fa-3x text-muted mb-3"></i>
+          <p>No recommendations available yet</p>
+        </div>`;
+    }
+    
+    reportHTML += `
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Insert the report HTML into the modal
+    reportContent.innerHTML = reportHTML;
+    
+  } catch (error) {
+    console.error('Error generating infographic report:', error);
+    const reportContent = document.getElementById('infographicReportContent');
+    const loadingIndicator = document.getElementById('infographic-loading');
+    
+    // Hide loading indicator
+    loadingIndicator.classList.add('d-none');
+    
+    // Show error message
+    reportContent.innerHTML = `
+      <div class="text-center py-5">
+        <div class="mb-3 text-danger">
+          <i class="fas fa-exclamation-triangle fa-3x"></i>
+        </div>
+        <h5>Failed to Generate Report</h5>
+        <p class="text-muted">${error.message || 'Unknown error occurred'}</p>
+      </div>
+    `;
+    
+    showToast('Failed to generate infographic report. Please try again.', 'danger');
+  }
+}
+
+/**
+ * Get the CSS class for a score circle based on score value
+ * @param {number} score - Score value
+ * @returns {string} CSS class
+ */
+function getScoreCircleClass(score) {
+  if (score >= 80) return 'stat-circle-success';
+  if (score >= 60) return 'stat-circle-primary';
+  if (score >= 40) return 'stat-circle-warning';
+  return 'stat-circle-danger';
+}
+
+/**
+ * Get the CSS class for a sentiment progress bar based on sentiment score
+ * @param {number} score - Sentiment score (0-5)
+ * @returns {string} CSS class
+ */
+function getSentimentBarClass(score) {
+  if (score >= 4) return 'bg-success';
+  if (score >= 3) return 'bg-info';
+  if (score >= 2) return 'bg-warning';
+  return 'bg-danger';
 }

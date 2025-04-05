@@ -553,3 +553,249 @@ def get_bid_sentiment(bid_id):
     except Exception as e:
         logger.error(f"Error in sentiment analysis: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+@main_bp.route('/api/reports/generate-summary/<int:rfp_id>', methods=['GET'])
+def generate_infographic_report(rfp_id):
+    """
+    Generate a comprehensive infographic-style summary report for an RFP and its bids.
+    This endpoint consolidates data from multiple sources to create a one-click report.
+    """
+    try:
+        # Get RFP details
+        rfp = db.session.query(RFPDocument).filter(RFPDocument.id == rfp_id).first()
+        if not rfp:
+            return jsonify({"error": "RFP not found"}), 404
+            
+        # Get all bids for this RFP
+        bids = db.session.query(VendorBid).filter(VendorBid.rfp_id == rfp_id).all()
+        
+        # Get requirements and technical specifications
+        requirements = db.session.query(Requirement).filter(Requirement.rfp_id == rfp_id).all()
+        tech_specs = db.session.query(TechnicalSpecification).filter(TechnicalSpecification.rfp_id == rfp_id).all()
+        
+        # Prepare the report data structure
+        report = {
+            "rfp": {
+                "id": rfp.id,
+                "title": rfp.title,
+                "agency": rfp.agency,
+                "project_id": rfp.project_id,
+                "description": rfp.description,
+                "upload_date": rfp.upload_date.strftime('%Y-%m-%d'),
+                "is_processed": rfp.is_processed
+            },
+            "summary": {
+                "total_bids": len(bids),
+                "total_requirements": len(requirements),
+                "total_specifications": len(tech_specs),
+                "requirement_categories": {},
+                "specification_categories": {},
+                "priority_distribution": {
+                    "Must-have": 0,
+                    "Should-have": 0,
+                    "Nice-to-have": 0
+                }
+            },
+            "bids": [],
+            "security": {
+                "framework_compliance": {},
+                "risk_levels": {
+                    "high": 0,
+                    "medium": 0,
+                    "low": 0
+                }
+            },
+            "sentiment": {
+                "average_score": 0,
+                "confidence": 0,
+                "keyword_indicators": []
+            },
+            "top_vendor": None,
+            "recommendations": []
+        }
+        
+        # Process requirements data
+        for req in requirements:
+            # Count requirement categories
+            if req.category not in report["summary"]["requirement_categories"]:
+                report["summary"]["requirement_categories"][req.category] = 0
+            report["summary"]["requirement_categories"][req.category] += 1
+            
+            # Count priority distribution
+            if req.priority in report["summary"]["priority_distribution"]:
+                report["summary"]["priority_distribution"][req.priority] += 1
+        
+        # Process technical specifications
+        for spec in tech_specs:
+            if spec.category not in report["summary"]["specification_categories"]:
+                report["summary"]["specification_categories"][spec.category] = 0
+            report["summary"]["specification_categories"][spec.category] += 1
+        
+        # Process bid data
+        bid_scores = []
+        for bid in bids:
+            # Get analysis results
+            analysis = db.session.query(AnalysisResult).filter(AnalysisResult.bid_id == bid.id).first()
+            
+            # Try to get security assessment
+            security_results = db.session.query(BidSecurityCompliance).filter(
+                BidSecurityCompliance.bid_id == bid.id
+            ).all()
+            
+            # Build compliance data
+            compliance_data = {}
+            for result in security_results:
+                requirement = db.session.query(SecurityRequirement).filter(
+                    SecurityRequirement.id == result.requirement_id
+                ).first()
+                
+                if requirement:
+                    framework = requirement.framework.value
+                    if framework not in compliance_data:
+                        compliance_data[framework] = {
+                            "total": 0,
+                            "compliant": 0,
+                            "score": 0
+                        }
+                    
+                    compliance_data[framework]["total"] += 1
+                    if result.is_compliant:
+                        compliance_data[framework]["compliant"] += 1
+                    compliance_data[framework]["score"] += result.compliance_score
+            
+            # Calculate average compliance scores
+            for framework in compliance_data:
+                if compliance_data[framework]["total"] > 0:
+                    compliance_data[framework]["score"] = round(
+                        compliance_data[framework]["score"] / compliance_data[framework]["total"], 1
+                    )
+                    compliance_data[framework]["percentage"] = round(
+                        (compliance_data[framework]["compliant"] / compliance_data[framework]["total"]) * 100, 1
+                    )
+            
+            # Try to get sentiment analysis
+            try:
+                sentiment_results = analyze_bid_sentiment(bid.id, db.session)
+            except Exception:
+                sentiment_results = {
+                    "success": False,
+                    "sentiment_score": None,
+                    "confidence": None,
+                    "key_indicators": []
+                }
+            
+            # Try to get risk assessment
+            try:
+                risk_assessment = predict_bid_risks(bid.id, db.session)
+            except Exception:
+                risk_assessment = {
+                    "success": False,
+                    "risk_factors": [],
+                    "overall_risk_level": "unknown"
+                }
+            
+            # Build bid summary
+            bid_summary = {
+                "id": bid.id,
+                "vendor_name": bid.vendor_name,
+                "submission_date": bid.submission_date.strftime('%Y-%m-%d'),
+                "total_score": bid.total_score,
+                "strengths": analysis.strengths if analysis else [],
+                "weaknesses": analysis.weaknesses if analysis else [],
+                "security_compliance": compliance_data,
+                "sentiment": {
+                    "score": sentiment_results.get("sentiment_score", None),
+                    "confidence": sentiment_results.get("confidence", None),
+                    "key_indicators": sentiment_results.get("key_indicators", [])
+                },
+                "risk": {
+                    "level": risk_assessment.get("overall_risk_level", "unknown"),
+                    "factors": risk_assessment.get("risk_factors", [])
+                }
+            }
+            
+            report["bids"].append(bid_summary)
+            
+            if bid.total_score:
+                bid_scores.append({
+                    "id": bid.id,
+                    "vendor_name": bid.vendor_name,
+                    "score": bid.total_score
+                })
+            
+            # Collect security framework data
+            for framework, data in compliance_data.items():
+                if framework not in report["security"]["framework_compliance"]:
+                    report["security"]["framework_compliance"][framework] = {
+                        "average_score": 0,
+                        "total_bids": 0
+                    }
+                
+                report["security"]["framework_compliance"][framework]["average_score"] += data["score"]
+                report["security"]["framework_compliance"][framework]["total_bids"] += 1
+            
+            # Count risk levels
+            risk_level = risk_assessment.get("overall_risk_level", "medium").lower()
+            if risk_level in report["security"]["risk_levels"]:
+                report["security"]["risk_levels"][risk_level] += 1
+            
+            # Collect sentiment data
+            sentiment_score = sentiment_results.get("sentiment_score", 0)
+            if sentiment_score:
+                report["sentiment"]["average_score"] += sentiment_score
+                report["sentiment"]["confidence"] += sentiment_results.get("confidence", 0)
+                
+                # Collect keyword indicators
+                for indicator in sentiment_results.get("key_indicators", []):
+                    if indicator not in report["sentiment"]["keyword_indicators"]:
+                        report["sentiment"]["keyword_indicators"].append(indicator)
+        
+        # Calculate averages for collected data
+        if len(bids) > 0:
+            # Average sentiment scores
+            report["sentiment"]["average_score"] = round(report["sentiment"]["average_score"] / len(bids), 1)
+            report["sentiment"]["confidence"] = round(report["sentiment"]["confidence"] / len(bids), 1)
+            
+            # Average security framework compliance
+            for framework in report["security"]["framework_compliance"]:
+                framework_data = report["security"]["framework_compliance"][framework]
+                if framework_data["total_bids"] > 0:
+                    framework_data["average_score"] = round(
+                        framework_data["average_score"] / framework_data["total_bids"], 1
+                    )
+        
+        # Find top vendor
+        if bid_scores:
+            top_vendor = max(bid_scores, key=lambda x: x["score"])
+            report["top_vendor"] = top_vendor
+        
+        # Generate recommendations based on analysis
+        must_have_count = report["summary"]["priority_distribution"]["Must-have"]
+        top_req_category = max(report["summary"]["requirement_categories"].items(), 
+                              key=lambda x: x[1])[0] if report["summary"]["requirement_categories"] else "None"
+        
+        recommendations = [
+            f"Focus on the {top_req_category} requirements as they represent the largest category in this RFP.",
+            f"Ensure all {must_have_count} 'Must-have' requirements are addressed in vendor responses."
+        ]
+        
+        if report["top_vendor"]:
+            recommendations.append(
+                f"{report['top_vendor']['vendor_name']} is currently the top-ranked vendor with a score of {report['top_vendor']['score']:.1f}."
+            )
+            
+        if report["security"]["risk_levels"]["high"] > 0:
+            recommendations.append(
+                f"Address the {report['security']['risk_levels']['high']} high-risk factors identified across vendor bids."
+            )
+            
+        report["recommendations"] = recommendations
+        
+        return jsonify({
+            "success": True,
+            "report": report
+        })
+        
+    except Exception as e:
+        logger.exception(f"Error generating infographic report: {str(e)}")
+        return jsonify({"error": str(e)}), 500

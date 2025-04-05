@@ -31,6 +31,139 @@
     .compliance-progress {
         height: 10px;
     }
+    
+    /* Infographic Report Styles */
+    .infographic-section {
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        background-color: var(--bs-gray-800);
+        border: 1px solid var(--bs-gray-700);
+    }
+    .stat-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        margin: 0 auto;
+        border: 3px solid;
+    }
+    .stat-circle-large {
+        width: 150px;
+        height: 150px;
+    }
+    .stat-circle-primary {
+        border-color: var(--bs-primary);
+        background-color: rgba(var(--bs-primary-rgb), 0.1);
+    }
+    .stat-circle-success {
+        border-color: var(--bs-success);
+        background-color: rgba(var(--bs-success-rgb), 0.1);
+    }
+    .stat-circle-danger {
+        border-color: var(--bs-danger);
+        background-color: rgba(var(--bs-danger-rgb), 0.1);
+    }
+    .stat-circle-warning {
+        border-color: var(--bs-warning);
+        background-color: rgba(var(--bs-warning-rgb), 0.1);
+    }
+    .stat-circle-info {
+        border-color: var(--bs-info);
+        background-color: rgba(var(--bs-info-rgb), 0.1);
+    }
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        line-height: 1;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        text-align: center;
+    }
+    .infographic-card {
+        height: 100%;
+        border: 1px solid var(--bs-gray-700);
+        background-color: var(--bs-gray-800);
+    }
+    .compliance-bar {
+        height: 25px;
+        border-radius: 4px;
+        margin-bottom: 5px;
+    }
+    .bidder-card {
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background-color: var(--bs-gray-900);
+        border: 1px solid var(--bs-gray-700);
+        transition: transform 0.2s;
+    }
+    .bidder-card:hover {
+        transform: translateY(-3px);
+    }
+    .top-vendor-card {
+        border: 2px solid var(--bs-warning);
+        border-left-width: 8px;
+    }
+    .recommendation-item {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        border-radius: 6px;
+        border-left: 4px solid var(--bs-info);
+        background-color: var(--bs-gray-900);
+    }
+    .risk-indicator {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    .risk-high {
+        background-color: var(--bs-danger);
+    }
+    .risk-medium {
+        background-color: var(--bs-warning);
+    }
+    .risk-low {
+        background-color: var(--bs-success);
+    }
+    .framework-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        background-color: var(--bs-gray-700);
+        display: inline-block;
+    }
+    .sentiment-indicator {
+        padding: 0.25rem 0.5rem;
+        border-radius: 10px;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        border: 1px solid var(--bs-gray-600);
+        display: inline-block;
+    }
+    .modal-dark .modal-content {
+        background-color: var(--bs-gray-900);
+        border: 1px solid var(--bs-gray-700);
+    }
+    .modal-dark .modal-header {
+        border-bottom-color: var(--bs-gray-700);
+    }
+    .modal-dark .modal-footer {
+        border-top-color: var(--bs-gray-700);
+    }
+    
+    @media print {
+        .infographic-section {
+            break-inside: avoid;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -49,6 +182,9 @@
             <p class="lead text-muted">{{ rfp.agency }} | Project ID: {{ rfp.project_id }}</p>
         </div>
         <div class="col-auto">
+            <button class="btn btn-primary me-2" id="generateReportBtn">
+                <i class="fas fa-chart-pie me-1"></i> One-Click Summary
+            </button>
             <button class="btn btn-outline-primary me-2" id="exportReportBtn">
                 <i class="fas fa-file-export me-1"></i> Export Report
             </button>
@@ -318,6 +454,32 @@
         </div>
     {% endif %}
 {% endif %}
+
+<!-- Infographic Report Modal -->
+<div class="modal fade modal-lg" id="infographicReportModal" tabindex="-1" aria-labelledby="infographicReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen modal-dark">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="infographicReportModalLabel">RFP Summary Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="infographicReportContent">
+                <div class="text-center py-5" id="infographic-loading">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Generating your comprehensive report...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="printReportBtn">
+                    <i class="fas fa-print me-1"></i> Print Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
