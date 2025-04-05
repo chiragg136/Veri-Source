@@ -8,6 +8,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 class Settings:
     # Database
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./unisphere.db")
+    # Fix DATABASE_URL for PostgreSQL if needed
+    if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     
     # Security
     SECRET_KEY = os.getenv("SESSION_SECRET", "development_secret_key")
