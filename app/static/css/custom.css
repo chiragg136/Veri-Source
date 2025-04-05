@@ -11,6 +11,75 @@ body {
   margin-top: auto;
 }
 
+/* Tooltip styling for contextual help */
+.terminology-tooltip {
+  cursor: help;
+  border-bottom: 1px dashed var(--bs-primary);
+  position: relative;
+}
+
+/* Gamification elements */
+.achievement-badge {
+  transition: all 0.3s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.achievement-badge:hover {
+  transform: scale(1.1);
+}
+
+.achievement-badge.locked {
+  filter: grayscale(100%);
+  opacity: 0.5;
+}
+
+.achievement-badge .badge-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.achievement-progress {
+  height: 5px;
+  background-color: rgba(var(--bs-primary-rgb), 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.achievement-progress .progress-fill {
+  height: 100%;
+  background-color: var(--bs-primary);
+}
+
+/* Animation effects */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
 /* Dashboard styling */
 .stats-card {
   transition: all 0.2s ease;
@@ -227,4 +296,162 @@ body {
 
 .nav-tabs .nav-link:hover::after {
   background-color: rgba(var(--bs-primary-rgb), 0.5);
+}
+
+/* Tooltip styling for contextual help */
+.terminology-tooltip {
+  cursor: help;
+  border-bottom: 1px dashed var(--bs-primary);
+  position: relative;
+}
+
+/* Gamification elements */
+.achievement-badge {
+  transition: all 0.3s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.achievement-badge:hover {
+  transform: scale(1.1);
+}
+
+.achievement-badge.locked {
+  filter: grayscale(100%);
+  opacity: 0.5;
+}
+
+.achievement-badge .badge-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.achievement-progress {
+  height: 5px;
+  background-color: rgba(var(--bs-primary-rgb), 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.achievement-progress .progress-fill {
+  height: 100%;
+  background-color: var(--bs-primary);
+}
+
+/* Animation effects */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Chatbot suggested questions */
+.suggested-question {
+  display: inline-block;
+  margin: 0.25rem;
+  padding: 0.4rem 0.8rem;
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.suggested-question:hover {
+  background-color: rgba(var(--bs-primary-rgb), 0.2);
+  transform: translateY(-2px);
+}
+
+/* Risk indicator styles */
+.risk-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.risk-indicator-high {
+  background-color: rgba(var(--bs-danger-rgb), 0.15);
+  color: var(--bs-danger);
+}
+
+.risk-indicator-medium {
+  background-color: rgba(var(--bs-warning-rgb), 0.15);
+  color: var(--bs-warning);
+}
+
+.risk-indicator-low {
+  background-color: rgba(var(--bs-success-rgb), 0.15);
+  color: var(--bs-success);
+}
+
+/* Human review indicator */
+.human-review-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  background-color: rgba(var(--bs-info-rgb), 0.15);
+  color: var(--bs-info);
+}
+
+/* Security compliance indicators */
+.compliance-indicator {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.compliance-indicator .icon {
+  margin-right: 0.5rem;
+  font-size: 1.25rem;
+}
+
+.compliance-certified {
+  color: var(--bs-success);
+}
+
+.compliance-pending {
+  color: var(--bs-warning);
+}
+
+.compliance-failed {
+  color: var(--bs-danger);
+}
+
+/* Data freshness indicator */
+.data-freshness {
+  font-size: 0.75rem;
+  color: var(--bs-info);
+  display: flex;
+  align-items: center;
+}
+
+.data-freshness i {
+  margin-right: 0.25rem;
 }

@@ -24,7 +24,8 @@ def create_app():
         init_db()
     
     # Import and register blueprints
-    from app.api.routes import main_bp
+    from app.api.routes import main_bp, router
     app.register_blueprint(main_bp)
+    app.register_blueprint(router)
     
     return app
