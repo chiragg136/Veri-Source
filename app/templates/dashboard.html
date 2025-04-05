@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        border-left: 4px solid var(--bs-primary);
+    }
+    .stats-icon {
+        font-size: 2rem;
+        opacity: 0.7;
+    }
+    .rfp-card {
+        transition: transform 0.2s;
+    }
+    .rfp-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2 class="mb-3">Procurement Analysis Dashboard</h2>
+        <p class="lead">View and manage your RFPs and vendor bids</p>
+    </div>
+    <div class="col-auto">
+        <a href="/upload" class="btn btn-primary">
+            <i class="fas fa-upload me-1"></i> Upload New Document
+        </a>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted">Total RFPs</h6>
+                        <h3 class="mb-0" id="total-rfps">{{ rfps|length }}</h3>
+                    </div>
+                    <div class="stats-icon text-primary">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted">Total Bids</h6>
+                        <h3 class="mb-0" id="total-bids">0</h3>
+                    </div>
+                    <div class="stats-icon text-success">
+                        <i class="fas fa-file-signature"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted">Avg. Bid Score</h6>
+                        <h3 class="mb-0" id="avg-score">0</h3>
+                    </div>
+                    <div class="stats-icon text-warning">
+                        <i class="fas fa-star"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted">Requirements</h6>
+                        <h3 class="mb-0" id="total-requirements">0</h3>
+                    </div>
+                    <div class="stats-icon text-info">
+                        <i class="fas fa-list-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart Row -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Bid Scores by Vendor</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="bidScoresChart" height="250"></canvas>
+                <div id="no-bid-data" class="text-center py-5 d-none">
+                    <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                    <p>No bid data available yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Requirement Compliance</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="requirementComplianceChart" height="250"></canvas>
+                <div id="no-requirement-data" class="text-center py-5 d-none">
+                    <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
+                    <p>No compliance data available yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- RFP List -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Your RFPs</h5>
+    </div>
+    <div class="card-body">
+        {% if rfps %}
+            <div class="row" id="rfp-list">
+                {% for rfp in rfps %}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card rfp-card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span class="badge bg-primary">RFP</span>
+                            <span class="text-muted small">{{ rfp.upload_date.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">{{ rfp.title }}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">{{ rfp.agency }}</h6>
+                            <p class="card-text small">{{ rfp.description[:100] }}{% if rfp.description|length > 100 %}...{% endif %}</p>
+                            <div class="d-flex justify-content-between mt-3">
+                                <span class="badge bg-secondary">Project ID: {{ rfp.project_id }}</span>
+                                <span class="badge {% if rfp.is_processed %}bg-success{% else %}bg-warning{% endif %}">
+                                    {% if rfp.is_processed %}Processed{% else %}Processing{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                            <a href="/reports?rfp_id={{ rfp.id }}" class="btn btn-sm btn-outline-primary">View Details</a>
+                            <button class="btn btn-sm btn-outline-success upload-bid-btn" data-rfp-id="{{ rfp.id }}" data-rfp-title="{{ rfp.title }}">Upload Bid</button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-file-upload fa-3x text-muted mb-3"></i>
+                <h5>No RFPs Found</h5>
+                <p class="text-muted">Upload your first RFP to get started</p>
+                <a href="/upload" class="btn btn-primary mt-2">
+                    <i class="fas fa-upload me-1"></i> Upload RFP
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

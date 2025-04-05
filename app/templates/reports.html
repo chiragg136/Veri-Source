@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .score-badge {
+        font-size: 1.2rem;
+        padding: 0.5rem 1rem;
+    }
+    .comparison-table th, .comparison-table td {
+        vertical-align: middle;
+    }
+    .strength-item {
+        border-left: 3px solid var(--bs-success);
+    }
+    .weakness-item {
+        border-left: 3px solid var(--bs-danger);
+    }
+    .gap-item {
+        border-left: 3px solid var(--bs-warning);
+    }
+    .score-cell {
+        width: 60px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 3px;
+        color: white;
+        font-weight: bold;
+    }
+    .compliance-progress {
+        height: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if rfp %}
+    <!-- RFP Detail View -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ rfp.title }}</li>
+                </ol>
+            </nav>
+            <h2 class="mb-2">{{ rfp.title }}</h2>
+            <p class="lead text-muted">{{ rfp.agency }} | Project ID: {{ rfp.project_id }}</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-primary me-2" id="exportReportBtn">
+                <i class="fas fa-file-export me-1"></i> Export Report
+            </button>
+            <a href="/upload" class="btn btn-success">
+                <i class="fas fa-plus me-1"></i> Upload New Bid
+            </a>
+        </div>
+    </div>
+
+    <!-- Bid Comparison Tab Navigation -->
+    <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab" aria-controls="summary" aria-selected="true">Summary</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="bids-tab" data-bs-toggle="tab" data-bs-target="#bids" type="button" role="tab" aria-controls="bids" aria-selected="false">Bid Comparison</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="requirements-tab" data-bs-toggle="tab" data-bs-target="#requirements" type="button" role="tab" aria-controls="requirements" aria-selected="false">Requirements</button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Summary Tab -->
+        <div class="tab-pane fade show active" id="summary" role="tabpanel" aria-labelledby="summary-tab">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">RFP Overview</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <strong>Agency:</strong>
+                                </div>
+                                <div class="col-md-9">
+                                    {{ rfp.agency }}
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <strong>Project ID:</strong>
+                                </div>
+                                <div class="col-md-9">
+                                    {{ rfp.project_id }}
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <strong>Upload Date:</strong>
+                                </div>
+                                <div class="col-md-9">
+                                    {{ rfp.upload_date.strftime('%Y-%m-%d') }}
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <strong>Status:</strong>
+                                </div>
+                                <div class="col-md-9">
+                                    <span class="badge {% if rfp.is_processed %}bg-success{% else %}bg-warning{% endif %}">
+                                        {% if rfp.is_processed %}Processed{% else %}Processing{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <strong>Description:</strong>
+                                </div>
+                                <div class="col-md-9">
+                                    {{ rfp.description }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bid Summary Chart -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Bid Score Comparison</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="bidComparisonChart" height="300"></canvas>
+                            <div id="no-bids-message" class="text-center py-5 d-none">
+                                <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                                <h5>No Bids Available</h5>
+                                <p class="text-muted">Upload vendor bids to see the comparison</p>
+                                <a href="/upload" class="btn btn-primary mt-2">
+                                    <i class="fas fa-upload me-1"></i> Upload Bid
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <!-- Bid Summary -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Bid Summary</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="bid-summary-content">
+                                <!-- Will be populated dynamically -->
+                                <div class="text-center py-3" id="no-bid-summary">
+                                    <i class="fas fa-file-signature fa-2x text-muted mb-3"></i>
+                                    <p>No bids analyzed yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Requirements Stats -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Requirements Breakdown</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="requirements-stats">
+                                <!-- Will be populated dynamically -->
+                                <div class="text-center py-3" id="no-requirements-stats">
+                                    <i class="fas fa-list-check fa-2x text-muted mb-3"></i>
+                                    <p>Requirements analysis in progress</p>
+                                </div>
+                            </div>
+                            <div class="text-center mt-3">
+                                <a href="#" class="btn btn-sm btn-outline-primary" id="view-all-requirements-btn">View All Requirements</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bid Comparison Tab -->
+        <div class="tab-pane fade" id="bids" role="tabpanel" aria-labelledby="bids-tab">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Detailed Bid Comparison</h5>
+                </div>
+                <div class="card-body">
+                    <div id="bid-comparison-content">
+                        <!-- Will be populated dynamically -->
+                        <div class="text-center py-5" id="no-bids-comparison">
+                            <i class="fas fa-file-signature fa-3x text-muted mb-3"></i>
+                            <h5>No Bids Available for Comparison</h5>
+                            <p class="text-muted">Upload at least one vendor bid to enable comparison</p>
+                            <a href="/upload" class="btn btn-primary mt-2">
+                                <i class="fas fa-upload me-1"></i> Upload Bid
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gap Analysis -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Gap Analysis</h5>
+                </div>
+                <div class="card-body">
+                    <div id="gap-analysis-content">
+                        <!-- Will be populated dynamically -->
+                        <div class="text-center py-5" id="no-gaps-analysis">
+                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                            <h5>No Gap Analysis Available</h5>
+                            <p class="text-muted">Upload vendor bids to see the gap analysis</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Requirements Tab -->
+        <div class="tab-pane fade" id="requirements" role="tabpanel" aria-labelledby="requirements-tab">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">All Requirements</h5>
+                    <div>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary active" data-filter="all">All</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="technical">Technical</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="security">Security</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="operational">Operational</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="financial">Financial</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="requirements-list">
+                        <!-- Will be populated dynamically -->
+                        <div class="text-center py-5" id="no-requirements-list">
+                            <i class="fas fa-list-check fa-3x text-muted mb-3"></i>
+                            <h5>No Requirements Available</h5>
+                            <p class="text-muted">Requirements analysis in progress</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Technical Specifications</h5>
+                </div>
+                <div class="card-body">
+                    <div id="specifications-list">
+                        <!-- Will be populated dynamically -->
+                        <div class="text-center py-5" id="no-specifications-list">
+                            <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                            <h5>No Technical Specifications Available</h5>
+                            <p class="text-muted">Technical specifications analysis in progress</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% else %}
+    <!-- RFP List View -->
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="mb-3">Procurement Reports</h2>
+            <p class="lead">Select an RFP to view detailed analysis and bid comparisons</p>
+        </div>
+    </div>
+
+    {% if rfps %}
+        <div class="row" id="rfp-reports-list">
+            {% for rfp in rfps %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card rfp-card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="badge bg-primary">RFP</span>
+                        <span class="text-muted small">{{ rfp.upload_date.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ rfp.title }}</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">{{ rfp.agency }}</h6>
+                        <p class="card-text small">{{ rfp.description[:100] }}{% if rfp.description|length > 100 %}...{% endif %}</p>
+                        <div class="d-flex justify-content-between mt-3">
+                            <span class="badge bg-secondary">Project ID: {{ rfp.project_id }}</span>
+                            <span class="badge {% if rfp.is_processed %}bg-success{% else %}bg-warning{% endif %}">
+                                {% if rfp.is_processed %}Processed{% else %}Processing{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <a href="/reports?rfp_id={{ rfp.id }}" class="btn btn-primary btn-sm w-100">
+                            <i class="fas fa-chart-line me-1"></i> View Analysis
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-file-upload fa-3x text-muted mb-3"></i>
+            <h5>No RFPs Found</h5>
+            <p class="text-muted">Upload your first RFP to get started</p>
+            <a href="/upload" class="btn btn-primary mt-2">
+                <i class="fas fa-upload me-1"></i> Upload RFP
+            </a>
+        </div>
+    {% endif %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Store RFP ID for API calls
+    const rfpId = {% if rfp %}{{ rfp.id }}{% else %}null{% endif %};
+</script>
+<script src="/static/js/reports.js"></script>
+{% endblock %}
