@@ -17,7 +17,8 @@ def get_db():
 
 def init_db():
     """Initialize the database by creating all tables."""
-    from app.models import document  # Import models to register them
+    # Import models to register them with SQLAlchemy
+    from app.models import document, government
     
     # In a Flask application context (will be done when app is created)
     if db.engine is not None:

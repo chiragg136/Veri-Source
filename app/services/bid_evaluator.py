@@ -13,6 +13,7 @@ from app.utils.openai_utils import (
     identify_strengths_weaknesses,
     perform_gap_analysis
 )
+from app.services.security_assessor import assess_security_compliance
 from app.config import settings
 
 # Configure logging
@@ -382,6 +383,19 @@ def evaluate_bid(bid_id: int, db: Session) -> bool:
         db.commit()
         
         logger.info(f"Successfully evaluated bid {bid_id} with overall score {overall_score:.2f}")
+        
+        # Perform security assessment as part of the evaluation process
+        try:
+            # Run the security assessment
+            security_success = assess_security_compliance(bid_id, db)
+            if security_success:
+                logger.info(f"Successfully performed security assessment for bid {bid_id}")
+            else:
+                logger.warning(f"Security assessment for bid {bid_id} did not complete successfully")
+        except Exception as e:
+            logger.error(f"Error during security assessment: {str(e)}")
+            # Don't fail the entire evaluation if security assessment fails
+        
         return True
         
     except Exception as e:

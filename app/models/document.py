@@ -17,6 +17,7 @@ class RFPDocument(db.Model):
     id = db.Column(Integer, primary_key=True, index=True)
     title = db.Column(String(255), nullable=False)
     agency = db.Column(String(255))
+    agency_id = db.Column(Integer, ForeignKey("government_agencies.id"), nullable=True)
     project_id = db.Column(String(100))
     description = db.Column(Text)
     upload_date = db.Column(DateTime, default=datetime.utcnow)
@@ -31,6 +32,7 @@ class RFPDocument(db.Model):
     requirements = db.relationship("Requirement", back_populates="rfp_document", cascade="all, delete")
     tech_specs = db.relationship("TechnicalSpecification", back_populates="rfp_document", cascade="all, delete")
     vendor_bids = db.relationship("VendorBid", back_populates="rfp_document", cascade="all, delete")
+    agency_details = db.relationship("GovernmentAgency", back_populates="rfp_documents")
 
 class Requirement(db.Model):
     __tablename__ = "requirements"
@@ -79,6 +81,7 @@ class VendorBid(db.Model):
     # Relationships
     rfp_document = db.relationship("RFPDocument", back_populates="vendor_bids")
     analysis_results = db.relationship("AnalysisResult", back_populates="vendor_bid", cascade="all, delete")
+    security_compliance = db.relationship("BidSecurityCompliance", back_populates="vendor_bid", cascade="all, delete")
 
 class AnalysisResult(db.Model):
     __tablename__ = "analysis_results"

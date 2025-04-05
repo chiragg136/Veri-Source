@@ -10,9 +10,11 @@ from werkzeug.utils import secure_filename
 from app.database import db
 from app.config import settings
 from app.models.document import RFPDocument, VendorBid, AnalysisResult, Requirement, TechnicalSpecification
+from app.models.government import GovernmentAgency, SecurityRequirement, BidSecurityCompliance
 from app.services.document_processor import process_document
 from app.services.rfp_analyzer import analyze_rfp
 from app.services.bid_evaluator import evaluate_bid
+from app.services.security_assessor import assess_security_compliance, predict_bid_risks, analyze_bid_sentiment
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -336,8 +338,11 @@ def get_bid_comparison(rfp_id):
 def chatbot():
     """
     Chatbot API for user questions about RFPs and bids.
+    Supports multi-LLM analysis with fallback options.
     """
     from app.utils.openai_utils import analyze_with_openai
+    from app.utils.perplexity_utils import analyze_with_perplexity
+    import random
     
     try:
         data = request.json
@@ -356,47 +361,195 @@ def chatbot():
         - Explaining procurement terms and processes
         - Interpreting RFP requirements
         - Understanding bid evaluation criteria
-        - Clarifying compliance issues
+        - Clarifying compliance issues 
         - Suggesting procurement best practices
+        - Providing guidance on government bidding processes
+        - Security and compliance requirements for government contracts
+        - Risk assessment and prediction in procurement
+        - Sentiment analysis of vendor proposals
+        - Human-in-the-loop accountability measures
         
         If asked about information outside your scope, politely redirect to procurement-related topics.
         """
         
-        # Create the full prompt for OpenAI
+        # Enhanced prompt with additional capabilities
         prompt = f"""
         {system_prompt}
         
+        NEW CAPABILITIES:
+        - Government bidding: You can provide detailed information about government bidding processes, 
+          requirements for becoming a government vendor, and compliance with federal/state regulations.
+        - Security features: You can explain security through secure self-hosting options, data protection
+          mechanisms, and compliance with security standards like FISMA, FedRAMP, etc.
+        - Risk prediction: You can analyze potential risks associated with vendors or bids,
+          including financial stability, past performance issues, and delivery capacity.
+        - Sentiment analysis: You can detect and interpret sentiment in vendor proposals to
+          identify potential issues such as lack of confidence, overcommitment, or hidden risks.
+        - Human-in-the-loop accountability: You can explain how UniSphere maintains human oversight
+          while automating procurement processes to ensure fairness and accuracy.
+        
         User question: {user_message}
         
-        Provide a helpful, concise, and informative response.
+        Provide a helpful, concise, and informative response that demonstrates expertise in procurement
+        and the enhanced capabilities listed above when relevant to the question.
         """
         
-        # Check if OpenAI API key is available
+        # Try multiple LLM providers with fallback strategy
+        response_text = None
+        
+        # First try OpenAI if available
         if settings.OPENAI_API_KEY:
-            # Get response from OpenAI
-            response = analyze_with_openai(prompt, "", None)
-            if isinstance(response, str):
-                return jsonify({'response': response})
-            else:
-                return jsonify({'response': str(response)})
-        else:
-            # Fallback responses if OpenAI API is not available
-            fallback_responses = [
-                "As your procurement assistant, I'd recommend carefully evaluating vendor compliance with all technical specifications listed in the RFP.",
-                "When comparing bids, focus on both price and the vendor's proven experience with similar projects.",
-                "Requirement prioritization is crucial. I suggest categorizing requirements as 'must-have', 'should-have', and 'nice-to-have'.",
-                "For government connectivity projects, ensure vendors demonstrate compliance with relevant security standards and regulations.",
-                "The most successful RFPs clearly articulate technical requirements while allowing vendors to propose innovative approaches.",
-                "When evaluating bids, consider both immediate costs and long-term total cost of ownership.",
-                "Gap analysis between requirements and vendor proposals helps identify potential risks in the procurement process.",
-                "I'd recommend documenting all vendor communications during the RFP process to maintain transparency and compliance.",
-                "For technical evaluations, consider forming a committee with subject matter experts from different departments.",
-                "UniSphere can help you analyze vendor bids against RFP requirements to identify the best match for your project needs."
+            try:
+                response_text = analyze_with_openai(prompt, "", None)
+                logging.info("Using OpenAI for chatbot response")
+            except Exception as e:
+                logging.error(f"OpenAI chatbot error: {str(e)}")
+                response_text = None
+        
+        # Then try Perplexity if OpenAI failed or is not available
+        if response_text is None and settings.PERPLEXITY_API_KEY:
+            try:
+                response_text = analyze_with_perplexity(prompt, "")
+                logging.info("Using Perplexity for chatbot response")
+            except Exception as e:
+                logging.error(f"Perplexity chatbot error: {str(e)}")
+                response_text = None
+        
+        # If both API calls failed or no API keys are available, use enhanced fallback responses
+        if response_text is None:
+            enhanced_fallback_responses = [
+                # Basic procurement advice
+                "As your procurement assistant, I'd recommend carefully evaluating vendor compliance with all technical specifications listed in the RFP, particularly focusing on security requirements for government connectivity projects.",
+                
+                # Government bidding
+                "Government bidding requires adherence to strict regulations. For federal contracts, vendors must register in SAM.gov and comply with FAR (Federal Acquisition Regulation). UniSphere can help streamline compliance verification across multiple requirements.",
+                
+                # Security features
+                "UniSphere supports secure self-hosting options where government agencies can deploy the solution within their own infrastructure, ensuring data never leaves their secure environment. This complies with FISMA and FedRAMP requirements.",
+                
+                # Risk prediction
+                "When evaluating vendors, it's important to assess both technical compliance and risk factors. UniSphere's risk prediction analyzes vendor financial stability, past performance, and delivery capacity to identify potential issues before they impact your project.",
+                
+                # Sentiment analysis
+                "Beyond technical compliance, UniSphere's sentiment analysis examines language patterns in vendor proposals to detect potential issues like uncertainty, overcommitment, or ambiguity that might indicate hidden risks.",
+                
+                # Human-in-the-loop
+                "While UniSphere automates procurement analysis, we maintain human-in-the-loop accountability through verification checkpoints and confidence scores that highlight when human review is recommended.",
+                
+                # Combined features
+                "For government connectivity projects, I recommend implementing a dual-evaluation approach: first assess technical compliance with requirements, then evaluate security capabilities and risk factors. UniSphere can assist with both aspects while allowing your team to make the final decisions.",
+                
+                # Practical application
+                "When comparing government vendor bids, look beyond the price to evaluate total cost of ownership, compliance with security standards like NIST 800-53, and the vendor's past performance on similar government contracts.",
+                
+                # Strategic advice
+                "To improve procurement outcomes, establish clear evaluation criteria with weighted scores for technical compliance, security features, past performance, and risk assessment. UniSphere can help implement and automate this scoring system."
             ]
             
-            import random
-            return jsonify({'response': random.choice(fallback_responses)})
+            response_text = random.choice(enhanced_fallback_responses)
+            logging.info("Using fallback response for chatbot")
+            
+        # Ensure we have a string response
+        if not isinstance(response_text, str):
+            response_text = str(response_text)
+        
+        return jsonify({'response': response_text})
             
     except Exception as e:
         logging.error(f"Chatbot error: {str(e)}")
         return jsonify({'error': 'An error occurred processing your request'}), 500
+        
+# Security assessment API routes
+@main_bp.route('/api/security/assess/<int:bid_id>', methods=['POST'])
+def security_assessment(bid_id):
+    """
+    Assess a vendor bid against security requirements from the RFP.
+    This endpoint evaluates compliance with security frameworks and requirements.
+    """
+    try:
+        # Get bid details
+        bid = db.session.query(VendorBid).filter(VendorBid.id == bid_id).first()
+        if not bid:
+            return jsonify({"error": f"Bid with ID {bid_id} not found"}), 404
+            
+        # Perform security assessment
+        success = assess_security_compliance(bid_id, db.session)
+        
+        if not success:
+            return jsonify({"error": "Failed to complete security assessment"}), 500
+            
+        # Get compliance results
+        compliance_results = (
+            db.session.query(BidSecurityCompliance)
+            .filter(BidSecurityCompliance.bid_id == bid_id)
+            .all()
+        )
+        
+        # Format results
+        formatted_results = []
+        for result in compliance_results:
+            requirement = db.session.query(SecurityRequirement).filter(
+                SecurityRequirement.id == result.requirement_id
+            ).first()
+            
+            if requirement:
+                formatted_results.append({
+                    "id": result.id,
+                    "requirement_id": result.requirement_id,
+                    "requirement_title": requirement.title,
+                    "framework": requirement.framework.value,
+                    "compliance_score": result.compliance_score,
+                    "is_compliant": result.is_compliant,
+                    "compliance_notes": result.compliance_notes,
+                    "verification_status": result.verification_status
+                })
+        
+        return jsonify({
+            "success": True,
+            "message": "Security assessment completed",
+            "bid_id": bid_id,
+            "vendor_name": bid.vendor_name,
+            "compliance_results": formatted_results
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in security assessment: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@main_bp.route('/api/security/risks/<int:bid_id>', methods=['GET'])
+def get_bid_risks(bid_id):
+    """
+    Get risk assessment for a specific vendor bid.
+    This endpoint analyzes potential risks associated with a vendor bid.
+    """
+    try:
+        # Run risk prediction
+        risk_assessment = predict_bid_risks(bid_id, db.session)
+        
+        if not risk_assessment.get("success", False):
+            return jsonify({"error": risk_assessment.get("message", "Unknown error")}), 500
+            
+        return jsonify(risk_assessment)
+        
+    except Exception as e:
+        logger.error(f"Error in risk assessment: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@main_bp.route('/api/security/sentiment/<int:bid_id>', methods=['GET'])
+def get_bid_sentiment(bid_id):
+    """
+    Get sentiment analysis for a specific vendor bid.
+    This endpoint analyzes the sentiment and language patterns in the bid.
+    """
+    try:
+        # Run sentiment analysis
+        sentiment_results = analyze_bid_sentiment(bid_id, db.session)
+        
+        if not sentiment_results.get("success", False):
+            return jsonify({"error": sentiment_results.get("message", "Unknown error")}), 500
+            
+        return jsonify(sentiment_results)
+        
+    except Exception as e:
+        logger.error(f"Error in sentiment analysis: {str(e)}")
+        return jsonify({"error": str(e)}), 500

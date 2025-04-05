@@ -163,4 +163,98 @@ def generate_intelligence_brief(rfp_text: str) -> str:
     if len(rfp_text) > max_length:
         rfp_text = rfp_text[:max_length] + "... [text truncated]"
     
-    return analyze_with_perplexity(prompt, rfp_text)
+    result = analyze_with_perplexity(prompt, rfp_text)
+    
+    # Handle case where result is not a string
+    if not isinstance(result, str):
+        # Convert result to string if it's a dictionary or list
+        return str(result)
+    
+    return result
+
+def analyze_bid_sentiment(bid_text: str) -> Dict:
+    """
+    Analyze the sentiment and language patterns in a vendor bid using Perplexity.
+    Identifies potential issues like uncertainty, overcommitment, ambiguity, etc.
+    
+    Args:
+        bid_text: Text from the bid document
+        
+    Returns:
+        Sentiment analysis results as a dictionary
+    """
+    prompt = """
+    You are an expert in document sentiment analysis and language pattern recognition.
+    Analyze the sentiment and language patterns in this vendor bid proposal for a government project.
+    
+    Focus on identifying any concerning patterns such as:
+    
+    1. Uncertainty or lack of confidence (e.g., hedging language, excessive qualifiers)
+    2. Overcommitment (e.g., unrealistic promises, lack of specificity in how deliverables will be achieved)
+    3. Ambiguity (e.g., vague terms, undefined scope boundaries)
+    4. Reluctance (e.g., excessive caveats, limitations, conditions)
+    5. Negative sentiment (e.g., complaints about requirements, defensive tone)
+    
+    For each section of the bid, identify the overall sentiment (positive, neutral, negative)
+    and confidence level (0-100).
+    
+    Provide your analysis as a JSON object with the following structure:
+    {
+        "overall_sentiment": string,  // "positive", "neutral", or "negative"
+        "confidence_score": number,   // 0-100 where 100 is highest confidence
+        "key_findings": [
+            {
+                "finding": string,     // Description of the finding
+                "evidence": string,    // Quote or example from the text
+                "significance": string, // Why this matters
+                "recommendation": string // How to address it
+            }
+        ],
+        "section_analysis": [
+            {
+                "section": string,       // Name or description of section
+                "sentiment": string,     // "positive", "neutral", or "negative"
+                "confidence": number,    // 0-100
+                "notable_patterns": string // Description of language patterns
+            }
+        ]
+    }
+    """
+    
+    try:
+        # Truncate bid text if too long
+        max_length = 7000  # Approximate token limit considering prompt
+        if len(bid_text) > max_length:
+            bid_text = bid_text[:max_length] + "... [text truncated]"
+        
+        result = analyze_with_perplexity(
+            prompt=prompt,
+            text=bid_text,
+            output_format="json",
+            temperature=0.1  # Lower temperature for more consistent analysis
+        )
+        
+        # Ensure we have a valid dictionary
+        if isinstance(result, str):
+            try:
+                result = json.loads(result)
+            except json.JSONDecodeError:
+                logger.error("Failed to parse sentiment analysis JSON result")
+                return {
+                    "overall_sentiment": "neutral",
+                    "confidence_score": 0,
+                    "key_findings": [],
+                    "section_analysis": [],
+                    "error": "Failed to parse sentiment analysis result"
+                }
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error performing sentiment analysis: {str(e)}")
+        return {
+            "overall_sentiment": "neutral",
+            "confidence_score": 0,
+            "key_findings": [],
+            "section_analysis": [],
+            "error": f"Error performing sentiment analysis: {str(e)}"
+        }
