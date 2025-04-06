@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+  .opportunity-card {
+    border-left: 4px solid var(--bs-primary);
+    transition: transform 0.2s;
+  }
+  .opportunity-card:hover {
+    transform: translateY(-5px);
+  }
+  .status-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+  .cream-header {
+    background-color: #f8f5e6;
+    color: #333;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+  }
+  h2, h3, h4 {
+    color: #0d6efd; /* Blue color for headings */
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row">
+    <div class="col-12">
+      <div class="cream-header">
+        <h1 class="mb-3">Government Bidding Portal</h1>
+        <p class="lead">Access open RFPs and submit bids directly through our secure platform</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Government Agency Interface -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h3 class="card-title mb-4">Agency Bidding Dashboard</h3>
+          
+          <ul class="nav nav-tabs mb-4" id="agencyTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="publish-tab" data-bs-toggle="tab" data-bs-target="#publish" type="button" role="tab" aria-controls="publish" aria-selected="true">Publish RFP</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage" type="button" role="tab" aria-controls="manage" aria-selected="false">Manage Published</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="review-tab" data-bs-toggle="tab" data-bs-target="#review" type="button" role="tab" aria-controls="review" aria-selected="false">Review Submissions</button>
+            </li>
+          </ul>
+          
+          <div class="tab-content" id="agencyTabContent">
+            <!-- Publish New RFP Tab -->
+            <div class="tab-pane fade show active" id="publish" role="tabpanel" aria-labelledby="publish-tab">
+              <form id="publishRfpForm">
+                <div class="mb-3">
+                  <label for="rfpTitle" class="form-label">RFP Title</label>
+                  <input type="text" class="form-control" id="rfpTitle" placeholder="Enter a descriptive title for your RFP">
+                </div>
+                
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="agencyName" class="form-label">Agency Name</label>
+                    <input type="text" class="form-control" id="agencyName" placeholder="Your government agency name">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="projectId" class="form-label">Project ID</label>
+                    <input type="text" class="form-control" id="projectId" placeholder="Unique project identifier">
+                  </div>
+                </div>
+                
+                <div class="mb-3">
+                  <label for="rfpDescription" class="form-label">Project Description</label>
+                  <textarea class="form-control" id="rfpDescription" rows="4" placeholder="Describe your project in detail..."></textarea>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Project Categories</label>
+                  <div class="row">
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="networking" id="catNetworking">
+                        <label class="form-check-label" for="catNetworking">
+                          Networking
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="infrastructure" id="catInfrastructure">
+                        <label class="form-check-label" for="catInfrastructure">
+                          Infrastructure
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="software" id="catSoftware">
+                        <label class="form-check-label" for="catSoftware">
+                          Software
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="consulting" id="catConsulting">
+                        <label class="form-check-label" for="catConsulting">
+                          Consulting
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="cybersecurity" id="catCybersecurity">
+                        <label class="form-check-label" for="catCybersecurity">
+                          Cybersecurity
+                        </label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="cloud" id="catCloud">
+                        <label class="form-check-label" for="catCloud">
+                          Cloud Services
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="submissionDeadline" class="form-label">Submission Deadline</label>
+                    <input type="date" class="form-control" id="submissionDeadline">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="budgetRange" class="form-label">Budget Range</label>
+                    <select class="form-select" id="budgetRange">
+                      <option selected>Select budget range</option>
+                      <option value="1">Under $50,000</option>
+                      <option value="2">$50,000 - $100,000</option>
+                      <option value="3">$100,000 - $500,000</option>
+                      <option value="4">$500,000 - $1,000,000</option>
+                      <option value="5">Over $1,000,000</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="mb-3">
+                  <label for="rfpDocument" class="form-label">Upload RFP Document</label>
+                  <input type="file" class="form-control" id="rfpDocument">
+                  <div class="form-text">Upload PDF, DOCX, or TXT file (Max 16MB)</div>
+                </div>
+                
+                <div class="mb-3">
+                  <label for="securityRequirements" class="form-label">Security Requirements</label>
+                  <select class="form-select" id="securityRequirements" multiple aria-label="Security frameworks required">
+                    <option value="fisma">FISMA</option>
+                    <option value="fedramp">FedRAMP</option>
+                    <option value="nist800_53">NIST 800-53</option>
+                    <option value="nist800_171">NIST 800-171</option>
+                    <option value="cmmc">CMMC</option>
+                    <option value="hipaa">HIPAA</option>
+                  </select>
+                  <div class="form-text">Hold Ctrl/Cmd to select multiple frameworks</div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Publish RFP</button>
+              </form>
+            </div>
+            
+            <!-- Manage Published RFPs Tab -->
+            <div class="tab-pane fade" id="manage" role="tabpanel" aria-labelledby="manage-tab">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>RFP Title</th>
+                      <th>Published Date</th>
+                      <th>Deadline</th>
+                      <th>Status</th>
+                      <th>Submissions</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Rural Broadband Connectivity Project</td>
+                      <td>March 15, 2025</td>
+                      <td>May 30, 2025</td>
+                      <td><span class="badge bg-success">Active</span></td>
+                      <td>3</td>
+                      <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button type="button" class="btn btn-outline-primary">View</button>
+                          <button type="button" class="btn btn-outline-warning">Edit</button>
+                          <button type="button" class="btn btn-outline-danger">Close</button>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>County Emergency Services Network</td>
+                      <td>February 10, 2025</td>
+                      <td>April 20, 2025</td>
+                      <td><span class="badge bg-success">Active</span></td>
+                      <td>7</td>
+                      <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button type="button" class="btn btn-outline-primary">View</button>
+                          <button type="button" class="btn btn-outline-warning">Edit</button>
+                          <button type="button" class="btn btn-outline-danger">Close</button>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Municipal WiFi Infrastructure</td>
+                      <td>January 5, 2025</td>
+                      <td>March 10, 2025</td>
+                      <td><span class="badge bg-secondary">Closed</span></td>
+                      <td>5</td>
+                      <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button type="button" class="btn btn-outline-primary">View</button>
+                          <button type="button" class="btn btn-outline-secondary">Archive</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <!-- Review Submissions Tab -->
+            <div class="tab-pane fade" id="review" role="tabpanel" aria-labelledby="review-tab">
+              <div class="mb-4">
+                <label for="rfpSelect" class="form-label">Select RFP to Review</label>
+                <select class="form-select" id="rfpSelect">
+                  <option selected>Choose RFP...</option>
+                  <option value="1">Rural Broadband Connectivity Project</option>
+                  <option value="2">County Emergency Services Network</option>
+                  <option value="3">Municipal WiFi Infrastructure</option>
+                </select>
+              </div>
+              
+              <div class="bid-submissions">
+                <h4 class="mb-3">Submissions (3)</h4>
+                
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <h5 class="card-title">TechConnect Solutions</h5>
+                    <h6 class="card-subtitle mb-2 text-body-secondary">Submitted: April 2, 2025</h6>
+                    <p class="card-text">Comprehensive proposal for rural connectivity using hybrid fiber-wireless technology with 95% coverage guarantee.</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <span class="badge bg-primary me-1">Score: 92/100</span>
+                        <span class="badge bg-success me-1">Security: High</span>
+                        <span class="badge bg-info">Risk: Low</span>
+                      </div>
+                      <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-primary">View Details</button>
+                        <button type="button" class="btn btn-sm btn-outline-success">Generate Report</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <h5 class="card-title">NetworkPro Inc.</h5>
+                    <h6 class="card-subtitle mb-2 text-body-secondary">Submitted: April 1, 2025</h6>
+                    <p class="card-text">Satellite-based solution with 4G LTE backup for rural connectivity. Includes 24/7 monitoring and SLA guarantees.</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <span class="badge bg-primary me-1">Score: 87/100</span>
+                        <span class="badge bg-warning me-1">Security: Medium</span>
+                        <span class="badge bg-warning">Risk: Medium</span>
+                      </div>
+                      <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-primary">View Details</button>
+                        <button type="button" class="btn btn-sm btn-outline-success">Generate Report</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <h5 class="card-title">Rural Connect Partners</h5>
+                    <h6 class="card-subtitle mb-2 text-body-secondary">Submitted: March 28, 2025</h6>
+                    <p class="card-text">Cost-effective wireless mesh network with solar backup power. Includes community training and local maintenance support.</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <span class="badge bg-primary me-1">Score: 81/100</span>
+                        <span class="badge bg-warning me-1">Security: Medium</span>
+                        <span class="badge bg-info">Risk: Low</span>
+                      </div>
+                      <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-primary">View Details</button>
+                        <button type="button" class="btn btn-sm btn-outline-success">Generate Report</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Open Opportunities Section -->
+  <div class="row mb-5">
+    <div class="col-12">
+      <h2 class="mb-4">Open Bidding Opportunities</h2>
+      
+      <div class="row row-cols-1 row-cols-md-2 g-4">
+        <!-- Opportunity 1 -->
+        <div class="col">
+          <div class="card h-100 opportunity-card">
+            <span class="badge bg-success status-badge">New</span>
+            <div class="card-body">
+              <h4 class="card-title">Rural Broadband Connectivity Project</h4>
+              <p class="card-text text-body-secondary mb-1"><i class="fas fa-building me-2"></i>Department of Agriculture</p>
+              <p class="card-text text-body-secondary mb-3"><i class="fas fa-calendar me-2"></i>Deadline: May 30, 2025</p>
+              <p class="card-text">Seeking proposals for implementing broadband connectivity solutions in underserved rural communities across 5 counties.</p>
+              <div class="d-flex mt-3">
+                <span class="badge bg-primary me-1">Networking</span>
+                <span class="badge bg-primary me-1">Infrastructure</span>
+                <span class="badge bg-primary">Connectivity</span>
+              </div>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+              <button class="btn btn-primary w-100">View Details & Submit Bid</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Opportunity 2 -->
+        <div class="col">
+          <div class="card h-100 opportunity-card">
+            <span class="badge bg-success status-badge">New</span>
+            <div class="card-body">
+              <h4 class="card-title">County Emergency Services Network</h4>
+              <p class="card-text text-body-secondary mb-1"><i class="fas fa-building me-2"></i>Department of Public Safety</p>
+              <p class="card-text text-body-secondary mb-3"><i class="fas fa-calendar me-2"></i>Deadline: April 20, 2025</p>
+              <p class="card-text">Seeking vendors to design, implement, and maintain a reliable emergency services communication network.</p>
+              <div class="d-flex mt-3">
+                <span class="badge bg-primary me-1">Emergency Services</span>
+                <span class="badge bg-primary me-1">Communications</span>
+                <span class="badge bg-primary">Security</span>
+              </div>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+              <button class="btn btn-primary w-100">View Details & Submit Bid</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Opportunity 3 -->
+        <div class="col">
+          <div class="card h-100 opportunity-card">
+            <div class="card-body">
+              <h4 class="card-title">State Data Center Modernization</h4>
+              <p class="card-text text-body-secondary mb-1"><i class="fas fa-building me-2"></i>Department of Information Technology</p>
+              <p class="card-text text-body-secondary mb-3"><i class="fas fa-calendar me-2"></i>Deadline: June 15, 2025</p>
+              <p class="card-text">Seeking proposals for modernizing state data center infrastructure with focus on security, efficiency, and scalability.</p>
+              <div class="d-flex mt-3">
+                <span class="badge bg-primary me-1">Data Center</span>
+                <span class="badge bg-primary me-1">Cloud</span>
+                <span class="badge bg-primary">Infrastructure</span>
+              </div>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+              <button class="btn btn-primary w-100">View Details & Submit Bid</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Opportunity 4 -->
+        <div class="col">
+          <div class="card h-100 opportunity-card">
+            <div class="card-body">
+              <h4 class="card-title">Smart City Traffic Management System</h4>
+              <p class="card-text text-body-secondary mb-1"><i class="fas fa-building me-2"></i>Department of Transportation</p>
+              <p class="card-text text-body-secondary mb-3"><i class="fas fa-calendar me-2"></i>Deadline: May 5, 2025</p>
+              <p class="card-text">Looking for innovative solutions to implement smart traffic management systems across major metropolitan areas.</p>
+              <div class="d-flex mt-3">
+                <span class="badge bg-primary me-1">Smart City</span>
+                <span class="badge bg-primary me-1">IoT</span>
+                <span class="badge bg-primary">Transportation</span>
+              </div>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+              <button class="btn btn-primary w-100">View Details & Submit Bid</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Form submission handling
+  const publishForm = document.getElementById('publishRfpForm');
+  if (publishForm) {
+    publishForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      // In a real application, you would validate and send the data to the server
+      alert('Your RFP has been published successfully!');
+      // Reset the form
+      publishForm.reset();
+    });
+  }
+  
+  // Enable Bootstrap tooltips
+  const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  tooltips.forEach(tooltip => {
+    new bootstrap.Tooltip(tooltip);
+  });
+});
+</script>
+{% endblock %}

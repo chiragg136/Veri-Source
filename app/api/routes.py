@@ -48,6 +48,20 @@ def reports():
     else:
         rfps = db.session.query(RFPDocument).all()
         return render_template('reports.html', rfps=rfps)
+        
+@main_bp.route('/government-bidding', methods=['GET'])
+def government_bidding():
+    """
+    Government bidding portal for agencies to publish RFPs and manage submissions.
+    This page allows government agencies to create and publish RFPs directly through
+    the platform, as well as review and evaluate submitted bids.
+    """
+    # Get a list of active RFPs for the opportunities section
+    active_rfps = db.session.query(RFPDocument).limit(4).all()
+    
+    # In a production environment, we'd filter by user's agency and permissions
+    
+    return render_template('government_bidding.html', active_rfps=active_rfps)
 
 # API routes
 @main_bp.route('/api/upload/rfp', methods=['POST'])
