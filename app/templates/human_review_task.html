@@ -1,0 +1,530 @@
+{% extends "base.html" %}
+
+{% block title %}Review Task #{{ review.id }} - VeriSource{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('human_review_dashboard') }}">Review Dashboard</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Review Task #{{ review.id }}</li>
+    </ol>
+  </nav>
+
+  <div class="row mb-4">
+    <div class="col-lg-8">
+      <h1 class="mb-3">
+        <i class="bi bi-shield-check me-2"></i>Review Task #{{ review.id }}
+      </h1>
+      <p class="lead">{{ review.review_type.value|replace('_', ' ')|title }} for 
+        {% if review.rfp_document %}
+          RFP: {{ review.rfp_document.title }}
+        {% elif review.vendor_bid %}
+          Bid: {{ review.vendor_bid.vendor_name }}
+        {% endif %}
+      </p>
+    </div>
+    <div class="col-lg-4 text-end">
+      <div class="d-flex justify-content-end align-items-center h-100">
+        <span class="badge {{ review.priority.value|priority_badge }} me-2" style="font-size: 1rem;">
+          {{ review.priority.value|title }} Priority
+        </span>
+        <span class="badge {{ review.status.value|status_badge }}" style="font-size: 1rem;">
+          {{ review.status.value|title }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card mb-3">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Review Details</h5>
+        </div>
+        <div class="card-body">
+          <p class="mb-2"><strong>Type:</strong> {{ review.review_type.value|replace('_', ' ')|title }}</p>
+          <p class="mb-2"><strong>Created:</strong> {{ review.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+          <p class="mb-2">
+            <strong>Assigned to:</strong> 
+            {% if review.assigned_to %}
+              {{ review.assigned_to }}
+            {% else %}
+              <span class="text-muted">Unassigned</span>
+            {% endif %}
+          </p>
+          <hr>
+          {% if related_document %}
+            <h6 class="mb-2">Related Document</h6>
+            {% if review.rfp_document %}
+              <p class="mb-2"><strong>RFP:</strong> {{ review.rfp_document.title|truncate(30) }}</p>
+              <p class="mb-2"><strong>Agency:</strong> {{ review.rfp_document.agency }}</p>
+              <p class="mb-2"><strong>Project ID:</strong> {{ review.rfp_document.project_id }}</p>
+            {% elif review.vendor_bid %}
+              <p class="mb-2"><strong>Vendor:</strong> {{ review.vendor_bid.vendor_name }}</p>
+              <p class="mb-2"><strong>Submission Date:</strong> {{ review.vendor_bid.submission_date.strftime('%Y-%m-%d') }}</p>
+              {% if review.vendor_bid.rfp_document %}
+                <p class="mb-2"><strong>RFP:</strong> {{ review.vendor_bid.rfp_document.title|truncate(30) }}</p>
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-9">
+      <div class="card mb-4">
+        <div class="card-header">
+          <ul class="nav nav-tabs card-header-tabs" id="reviewTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="ai-assessment-tab" data-bs-toggle="tab" data-bs-target="#ai-assessment" type="button" role="tab" aria-controls="ai-assessment" aria-selected="true">
+                <i class="bi bi-robot me-1"></i>AI Assessment
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="human-review-tab" data-bs-toggle="tab" data-bs-target="#human-review" type="button" role="tab" aria-controls="human-review" aria-selected="false">
+                <i class="bi bi-person-check me-1"></i>Human Review
+              </button>
+            </li>
+            {% if review.review_type.value == 'bid_evaluation' %}
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="document-tab" data-bs-toggle="tab" data-bs-target="#document" type="button" role="tab" aria-controls="document" aria-selected="false">
+                <i class="bi bi-file-text me-1"></i>Document
+              </button>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+        <div class="tab-content" id="reviewTabsContent">
+          <div class="tab-pane fade show active" id="ai-assessment" role="tabpanel" aria-labelledby="ai-assessment-tab">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="bi bi-robot me-2"></i>AI-Generated Assessment</h5>
+                <span class="badge bg-secondary">Generated {{ review.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+              </div>
+              
+              {% if review.review_type.value == 'bid_evaluation' %}
+                <!-- Bid Evaluation Format -->
+                <div class="mb-3">
+                  <h6 class="mb-2">Overall Score</h6>
+                  <div class="progress" style="height: 20px;">
+                    <div class="progress-bar {{ review.ai_assessment.overall_score|score_color }}" role="progressbar" 
+                         style="width: {{ (review.ai_assessment.overall_score * 100)|int }}%" 
+                         aria-valuenow="{{ (review.ai_assessment.overall_score * 100)|int }}" aria-valuemin="0" aria-valuemax="100">
+                      {{ "%.1f"|format(review.ai_assessment.overall_score * 100) }}%
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="mb-3">
+                  <h6 class="mb-2">Strengths</h6>
+                  <ul class="list-group">
+                    {% for strength in review.ai_assessment.strengths %}
+                      <li class="list-group-item"><i class="bi bi-plus-circle text-success me-2"></i>{{ strength }}</li>
+                    {% endfor %}
+                  </ul>
+                </div>
+                
+                <div class="mb-3">
+                  <h6 class="mb-2">Weaknesses</h6>
+                  <ul class="list-group">
+                    {% for weakness in review.ai_assessment.weaknesses %}
+                      <li class="list-group-item"><i class="bi bi-dash-circle text-danger me-2"></i>{{ weakness }}</li>
+                    {% endfor %}
+                  </ul>
+                </div>
+                
+                <div class="mb-3">
+                  <h6 class="mb-2">Gaps</h6>
+                  <ul class="list-group">
+                    {% for gap in review.ai_assessment.gap_analysis %}
+                      <li class="list-group-item"><i class="bi bi-exclamation-triangle text-warning me-2"></i>{{ gap }}</li>
+                    {% endfor %}
+                  </ul>
+                </div>
+                
+                <div class="mb-3">
+                  <h6 class="mb-2">Requirement Compliance</h6>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th>Requirement</th>
+                          <th>Category</th>
+                          <th>Score</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for req_id, compliance in review.ai_assessment.requirement_compliance.items() %}
+                          <tr>
+                            <td>{{ compliance.description|truncate(50) }}</td>
+                            <td>{{ compliance.category }}</td>
+                            <td>
+                              <div class="score-cell {{ compliance.score|score_color }}">
+                                {{ (compliance.score * 100)|int }}%
+                              </div>
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+              {% elif review.review_type.value == 'security_assessment' %}
+                <!-- Security Assessment Format -->
+                <div class="mb-3">
+                  <h6 class="mb-2">Security Compliance Score</h6>
+                  <div class="progress" style="height: 20px;">
+                    <div class="progress-bar {{ review.ai_assessment.overall_score|score_color }}" role="progressbar" 
+                         style="width: {{ (review.ai_assessment.overall_score * 100)|int }}%" 
+                         aria-valuenow="{{ (review.ai_assessment.overall_score * 100)|int }}" aria-valuemin="0" aria-valuemax="100">
+                      {{ "%.1f"|format(review.ai_assessment.overall_score * 100) }}%
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="mb-3">
+                  <h6 class="mb-2">Security Findings</h6>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th>Category</th>
+                          <th>Description</th>
+                          <th>Severity</th>
+                          <th>Compliance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for finding in review.ai_assessment.findings %}
+                          <tr>
+                            <td>{{ finding.category }}</td>
+                            <td>{{ finding.description }}</td>
+                            <td>
+                              <span class="badge {{ finding.severity|risk_badge }}">
+                                {{ finding.severity|title }}
+                              </span>
+                            </td>
+                            <td>
+                              <div class="score-cell {{ finding.compliance_score|score_color }}">
+                                {{ (finding.compliance_score * 100)|int }}%
+                              </div>
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+              {% elif review.review_type.value == 'risk_assessment' %}
+                <!-- Risk Assessment Format -->
+                <div class="mb-3">
+                  <h6 class="mb-2">Risk Categories</h6>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th>Risk Category</th>
+                          <th>Description</th>
+                          <th>Probability</th>
+                          <th>Impact</th>
+                          <th>Overall Risk</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for risk in review.ai_assessment.risks %}
+                          <tr>
+                            <td>{{ risk.category }}</td>
+                            <td>{{ risk.description }}</td>
+                            <td>{{ risk.probability }}</td>
+                            <td>{{ risk.impact }}</td>
+                            <td>
+                              <span class="badge {{ risk.level|risk_badge }}">
+                                {{ risk.level|title }}
+                              </span>
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                <div class="mb-3">
+                  <h6 class="mb-2">Mitigation Strategies</h6>
+                  <ul class="list-group">
+                    {% for strategy in review.ai_assessment.mitigation_strategies %}
+                      <li class="list-group-item">
+                        <strong>{{ strategy.risk_category }}:</strong> {{ strategy.description }}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+                
+              {% elif review.review_type.value == 'sentiment_analysis' %}
+                <!-- Sentiment Analysis Format -->
+                <div class="mb-3">
+                  <h6 class="mb-2">Overall Sentiment</h6>
+                  <div class="progress" style="height: 20px;">
+                    <div class="progress-bar {{ review.ai_assessment.score|sentiment_color }}" role="progressbar" 
+                         style="width: {{ (review.ai_assessment.score * 100)|int }}%" 
+                         aria-valuenow="{{ (review.ai_assessment.score * 100)|int }}" aria-valuemin="0" aria-valuemax="100">
+                      {{ "%.1f"|format(review.ai_assessment.score * 100) }}%
+                    </div>
+                  </div>
+                  <p class="text-center mt-2">
+                    <span class="badge {{ review.ai_assessment.category|sentiment_badge }}">
+                      {{ review.ai_assessment.category|title }}
+                    </span>
+                    <small class="text-muted ms-2">{{ "%.1f"|format(review.ai_assessment.confidence * 100) }}% confidence</small>
+                  </p>
+                </div>
+                
+                <div class="mb-3">
+                  <h6 class="mb-2">Key Phrases</h6>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th>Phrase</th>
+                          <th>Sentiment</th>
+                          <th>Score</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for phrase in review.ai_assessment.key_phrases %}
+                          <tr>
+                            <td>{{ phrase.text }}</td>
+                            <td>
+                              <span class="badge {{ phrase.sentiment|sentiment_badge }}">
+                                {{ phrase.sentiment|title }}
+                              </span>
+                            </td>
+                            <td>
+                              <div class="score-cell {{ phrase.score|sentiment_color }}">
+                                {{ "%.0f"|format(phrase.score * 100) }}%
+                              </div>
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+              {% else %}
+                <!-- Generic JSON Format -->
+                <pre class="bg-dark text-light p-3 rounded" style="max-height: 500px; overflow-y: auto;">{{ review.ai_assessment|tojson(indent=2) }}</pre>
+              {% endif %}
+            </div>
+          </div>
+          
+          <div class="tab-pane fade" id="human-review" role="tabpanel" aria-labelledby="human-review-tab">
+            <form id="reviewForm" method="post" action="{{ url_for('submit_human_review', review_id=review.id) }}">
+              <div class="card-body">
+                <div class="alert alert-info">
+                  <i class="bi bi-info-circle-fill me-2"></i>
+                  Review the AI assessment and make any necessary corrections or adjustments before submitting.
+                </div>
+                
+                <div class="mb-3">
+                  <label for="reviewStatus" class="form-label">Review Decision</label>
+                  <select class="form-select" id="reviewStatus" name="status" required>
+                    <option value="">Select decision...</option>
+                    <option value="approved">Approve (AI assessment is accurate)</option>
+                    <option value="modified">Modify (I've made corrections to the assessment)</option>
+                    <option value="rejected">Reject (AI assessment is inaccurate or inappropriate)</option>
+                  </select>
+                </div>
+                
+                <div id="modificationFields" class="d-none">
+                  {% if review.review_type.value == 'bid_evaluation' %}
+                    <!-- Bid Evaluation Fields -->
+                    <div class="mb-3">
+                      <label for="overallScore" class="form-label">Overall Score (0-100)</label>
+                      <input type="number" class="form-control" id="overallScore" name="overall_score" min="0" max="100" 
+                             value="{{ (review.ai_assessment.overall_score * 100)|int }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label for="strengths" class="form-label">Strengths</label>
+                      <textarea class="form-control" id="strengths" name="strengths" rows="3">{% for strength in review.ai_assessment.strengths %}{{ strength }}
+{% endfor %}</textarea>
+                      <small class="form-text text-muted">Enter each strength on a new line.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label for="weaknesses" class="form-label">Weaknesses</label>
+                      <textarea class="form-control" id="weaknesses" name="weaknesses" rows="3">{% for weakness in review.ai_assessment.weaknesses %}{{ weakness }}
+{% endfor %}</textarea>
+                      <small class="form-text text-muted">Enter each weakness on a new line.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label for="gaps" class="form-label">Gaps</label>
+                      <textarea class="form-control" id="gaps" name="gaps" rows="3">{% for gap in review.ai_assessment.gap_analysis %}{{ gap }}
+{% endfor %}</textarea>
+                      <small class="form-text text-muted">Enter each gap on a new line.</small>
+                    </div>
+                    
+                  {% elif review.review_type.value == 'security_assessment' %}
+                    <!-- Security Assessment Fields -->
+                    <div class="mb-3">
+                      <label for="securityScore" class="form-label">Security Compliance Score (0-100)</label>
+                      <input type="number" class="form-control" id="securityScore" name="security_score" min="0" max="100" 
+                             value="{{ (review.ai_assessment.overall_score * 100)|int }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label for="securityFindings" class="form-label">Security Findings (JSON)</label>
+                      <textarea class="form-control" id="securityFindings" name="security_findings" rows="10">{{ review.ai_assessment.findings|tojson(indent=2) }}</textarea>
+                      <small class="form-text text-muted">Edit the JSON to update security findings.</small>
+                    </div>
+                    
+                  {% elif review.review_type.value == 'risk_assessment' %}
+                    <!-- Risk Assessment Fields -->
+                    <div class="mb-3">
+                      <label for="riskData" class="form-label">Risk Assessment Data (JSON)</label>
+                      <textarea class="form-control" id="riskData" name="risk_data" rows="10">{{ review.ai_assessment|tojson(indent=2) }}</textarea>
+                      <small class="form-text text-muted">Edit the JSON to update risk assessment data.</small>
+                    </div>
+                    
+                  {% elif review.review_type.value == 'sentiment_analysis' %}
+                    <!-- Sentiment Analysis Fields -->
+                    <div class="mb-3">
+                      <label for="sentimentScore" class="form-label">Sentiment Score (0-100)</label>
+                      <input type="number" class="form-control" id="sentimentScore" name="sentiment_score" min="0" max="100" 
+                             value="{{ (review.ai_assessment.score * 100)|int }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label for="sentimentCategory" class="form-label">Sentiment Category</label>
+                      <select class="form-select" id="sentimentCategory" name="sentiment_category">
+                        <option value="positive" {% if review.ai_assessment.category == 'positive' %}selected{% endif %}>Positive</option>
+                        <option value="neutral" {% if review.ai_assessment.category == 'neutral' %}selected{% endif %}>Neutral</option>
+                        <option value="negative" {% if review.ai_assessment.category == 'negative' %}selected{% endif %}>Negative</option>
+                      </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label for="keyPhrases" class="form-label">Key Phrases (JSON)</label>
+                      <textarea class="form-control" id="keyPhrases" name="key_phrases" rows="6">{{ review.ai_assessment.key_phrases|tojson(indent=2) }}</textarea>
+                      <small class="form-text text-muted">Edit the JSON to update key phrases.</small>
+                    </div>
+                    
+                  {% else %}
+                    <!-- Generic JSON Editor -->
+                    <div class="mb-3">
+                      <label for="assessmentData" class="form-label">Assessment Data (JSON)</label>
+                      <textarea class="form-control" id="assessmentData" name="assessment_data" rows="12">{{ review.ai_assessment|tojson(indent=2) }}</textarea>
+                      <small class="form-text text-muted">Edit the JSON to update the assessment data.</small>
+                    </div>
+                  {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                  <label for="reviewNotes" class="form-label">Review Notes</label>
+                  <textarea class="form-control" id="reviewNotes" name="notes" rows="3" placeholder="Enter any notes about your review..."></textarea>
+                </div>
+                
+                <div class="mb-3">
+                  <label for="decisionRationale" class="form-label">Decision Rationale</label>
+                  <textarea class="form-control" id="decisionRationale" name="rationale" rows="3" placeholder="Explain the reasoning behind your decision..."></textarea>
+                </div>
+                
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label for="agreementLevel" class="form-label">Agreement Level with AI Assessment (0-100%)</label>
+                    <input type="range" class="form-range" id="agreementLevel" name="agreement_level" min="0" max="100" value="80">
+                    <div class="d-flex justify-content-between">
+                      <small>Low Agreement</small>
+                      <small id="agreementValue">80%</small>
+                      <small>High Agreement</small>
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <label for="confidenceScore" class="form-label">Confidence in Your Review (0-100%)</label>
+                    <input type="range" class="form-range" id="confidenceScore" name="confidence_score" min="0" max="100" value="90">
+                    <div class="d-flex justify-content-between">
+                      <small>Low Confidence</small>
+                      <small id="confidenceValue">90%</small>
+                      <small>High Confidence</small>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                  <a href="{{ url_for('human_review_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                  </a>
+                  <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle me-1"></i>Submit Review
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+          
+          {% if review.review_type.value == 'bid_evaluation' %}
+          <div class="tab-pane fade" id="document" role="tabpanel" aria-labelledby="document-tab">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5><i class="bi bi-file-text me-2"></i>Document Contents</h5>
+                <a href="#" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-download me-1"></i>Download Original
+                </a>
+              </div>
+              
+              <div class="bg-dark text-light p-3 rounded" style="max-height: 600px; overflow-y: auto;">
+                {% if document_content %}
+                  <pre>{{ document_content }}</pre>
+                {% else %}
+                  <p class="text-center text-muted my-5">Document content not available for preview.</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Show/hide modification fields based on review status
+  const reviewStatus = document.getElementById('reviewStatus');
+  const modificationFields = document.getElementById('modificationFields');
+  
+  reviewStatus.addEventListener('change', function() {
+    if (this.value === 'modified') {
+      modificationFields.classList.remove('d-none');
+    } else {
+      modificationFields.classList.add('d-none');
+    }
+  });
+  
+  // Update agreement level display
+  const agreementLevel = document.getElementById('agreementLevel');
+  const agreementValue = document.getElementById('agreementValue');
+  
+  agreementLevel.addEventListener('input', function() {
+    agreementValue.textContent = this.value + '%';
+  });
+  
+  // Update confidence score display
+  const confidenceScore = document.getElementById('confidenceScore');
+  const confidenceValue = document.getElementById('confidenceValue');
+  
+  confidenceScore.addEventListener('input', function() {
+    confidenceValue.textContent = this.value + '%';
+  });
+});
+</script>
+{% endblock %}

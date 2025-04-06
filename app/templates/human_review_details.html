@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Review Details #{{ review.id }} - VeriSource{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('human_review_dashboard') }}">Review Dashboard</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Review Details #{{ review.id }}</li>
+    </ol>
+  </nav>
+
+  <div class="row mb-4">
+    <div class="col-lg-8">
+      <h1 class="mb-3">
+        <i class="bi bi-shield-check me-2"></i>Review Details #{{ review.id }}
+      </h1>
+      <p class="lead">{{ review.review_type.value|replace('_', ' ')|title }} for 
+        {% if review.rfp_document %}
+          RFP: {{ review.rfp_document.title }}
+        {% elif review.vendor_bid %}
+          Bid: {{ review.vendor_bid.vendor_name }}
+        {% endif %}
+      </p>
+    </div>
+    <div class="col-lg-4 text-end">
+      <div class="d-flex justify-content-end align-items-center h-100">
+        <span class="badge {{ review.status.value|status_badge }}" style="font-size: 1rem;">
+          {{ review.status.value|title }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card mb-3">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Review Details</h5>
+        </div>
+        <div class="card-body">
+          <p class="mb-2"><strong>Type:</strong> {{ review.review_type.value|replace('_', ' ')|title }}</p>
+          <p class="mb-2"><strong>Created:</strong> {{ review.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+          <p class="mb-2"><strong>Completed:</strong> {{ review.completed_at.strftime('%Y-%m-%d %H:%M') }}</p>
+          <p class="mb-2"><strong>Time to complete:</strong> {{ "%.1f"|format(review.time_to_complete) }} minutes</p>
+          <p class="mb-2"><strong>Completed by:</strong> {{ review.completed_by }}</p>
+          <p class="mb-2"><strong>Priority:</strong> 
+            <span class="badge {{ review.priority.value|priority_badge }}">
+              {{ review.priority.value|title }}
+            </span>
+          </p>
+          <hr>
+          <h6 class="mb-2">Review Metrics</h6>
+          <p class="mb-2"><strong>Agreement Level:</strong></p>
+          <div class="progress mb-2" style="height: 8px;" data-bs-toggle="tooltip" title="{{ "%.0f"|format(review.agreement_level * 100) }}% agreement">
+            <div class="progress-bar {{ review.agreement_level|agreement_color }}" role="progressbar" style="width: {{ (review.agreement_level * 100)|int }}%"></div>
+          </div>
+          <p class="mb-2"><strong>Confidence Score:</strong></p>
+          <div class="progress" style="height: 8px;" data-bs-toggle="tooltip" title="{{ "%.0f"|format(review.confidence_score * 100) }}% confidence">
+            <div class="progress-bar bg-info" role="progressbar" style="width: {{ (review.confidence_score * 100)|int }}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-9">
+      <div class="card mb-4">
+        <div class="card-header">
+          <ul class="nav nav-tabs card-header-tabs" id="reviewTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab" aria-controls="summary" aria-selected="true">
+                <i class="bi bi-list-check me-1"></i>Summary
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="ai-assessment-tab" data-bs-toggle="tab" data-bs-target="#ai-assessment" type="button" role="tab" aria-controls="ai-assessment" aria-selected="false">
+                <i class="bi bi-robot me-1"></i>AI Assessment
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="human-assessment-tab" data-bs-toggle="tab" data-bs-target="#human-assessment" type="button" role="tab" aria-controls="human-assessment" aria-selected="false">
+                <i class="bi bi-person-check me-1"></i>Human Assessment
+              </button>
+            </li>
+          </ul>
+        </div>
+        <div class="tab-content" id="reviewTabsContent">
+          <div class="tab-pane fade show active" id="summary" role="tabpanel" aria-labelledby="summary-tab">
+            <div class="card-body">
+              <div class="mb-4">
+                <h5 class="mb-3"><i class="bi bi-shield-check me-2"></i>Review Summary</h5>
+                
+                <div class="alert alert-{{ review.status.value|status_color }}" role="alert">
+                  {% if review.status.value == 'approved' %}
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <strong>AI Assessment Approved</strong> - The human reviewer confirmed the accuracy of the AI assessment.
+                  {% elif review.status.value == 'modified' %}
+                    <i class="bi bi-pencil-square me-2"></i>
+                    <strong>AI Assessment Modified</strong> - The human reviewer made corrections to the AI assessment.
+                  {% elif review.status.value == 'rejected' %}
+                    <i class="bi bi-x-circle-fill me-2"></i>
+                    <strong>AI Assessment Rejected</strong> - The human reviewer found the AI assessment to be inaccurate or inappropriate.
+                  {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                  <h6>Review Notes</h6>
+                  <div class="card bg-light">
+                    <div class="card-body">
+                      {% if review.review_notes %}
+                        {{ review.review_notes|nl2br }}
+                      {% else %}
+                        <p class="text-muted mb-0">No review notes provided.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="mb-3">
+                  <h6>Decision Rationale</h6>
+                  <div class="card bg-light">
+                    <div class="card-body">
+                      {% if review.decision_rationale %}
+                        {{ review.decision_rationale|nl2br }}
+                      {% else %}
+                        <p class="text-muted mb-0">No decision rationale provided.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                
+                {% if comparison_data %}
+                  <div class="mb-3">
+                    <h6>Key Changes Made</h6>
+                    <div class="table-responsive">
+                      <table class="table table-sm table-hover">
+                        <thead>
+                          <tr>
+                            <th>Field</th>
+                            <th>AI Value</th>
+                            <th>Human Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for field, values in comparison_data.items() %}
+                            <tr>
+                              <td>{{ field|replace('_', ' ')|title }}</td>
+                              <td>{{ values.ai_value }}</td>
+                              <td {% if values.changed %}class="table-warning"{% endif %}>
+                                {{ values.human_value }}
+                                {% if values.changed %}
+                                  <i class="bi bi-pencil-fill text-warning ms-1" data-bs-toggle="tooltip" title="Modified by human reviewer"></i>
+                                {% endif %}
+                              </td>
+                            </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
+              
+              <div class="d-flex justify-content-between">
+                <a href="{{ url_for('human_review_dashboard') }}" class="btn btn-outline-secondary">
+                  <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                </a>
+                {% if related_document_url %}
+                  <a href="{{ related_document_url }}" class="btn btn-primary">
+                    <i class="bi bi-file-earmark-text me-1"></i>View Related Document
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          
+          <div class="tab-pane fade" id="ai-assessment" role="tabpanel" aria-labelledby="ai-assessment-tab">
+            <div class="card-body">
+              <h5 class="mb-3"><i class="bi bi-robot me-2"></i>Original AI Assessment</h5>
+              <div class="bg-dark text-light p-3 rounded" style="max-height: 600px; overflow-y: auto;">
+                <pre>{{ review.ai_assessment|tojson(indent=2) }}</pre>
+              </div>
+            </div>
+          </div>
+          
+          <div class="tab-pane fade" id="human-assessment" role="tabpanel" aria-labelledby="human-assessment-tab">
+            <div class="card-body">
+              <h5 class="mb-3"><i class="bi bi-person-check me-2"></i>Human-Reviewed Assessment</h5>
+              {% if review.human_assessment %}
+                <div class="bg-dark text-light p-3 rounded" style="max-height: 600px; overflow-y: auto;">
+                  <pre>{{ review.human_assessment|tojson(indent=2) }}</pre>
+                </div>
+              {% else %}
+                <div class="alert alert-info">
+                  <i class="bi bi-info-circle-fill me-2"></i>
+                  No modifications were made to the AI assessment. The human reviewer approved it as-is.
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize tooltips
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
+</script>
+{% endblock %}

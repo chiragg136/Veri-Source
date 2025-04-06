@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Human Review Dashboard - VeriSource{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row mb-4">
+    <div class="col">
+      <h1 class="mb-3"><i class="bi bi-shield-check me-2"></i>Human Review Dashboard</h1>
+      <p class="lead">Ensure accountability and oversight by reviewing AI-generated assessments before they're finalized.</p>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card stats-card bg-dark text-white mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Pending Reviews</h5>
+          <h2 class="mb-0">{{ stats.pending_reviews }}</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card bg-dark text-white mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Completed Reviews</h5>
+          <h2 class="mb-0">{{ stats.approved_reviews + stats.rejected_reviews + stats.modified_reviews }}</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card bg-dark text-white mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Completion Rate</h5>
+          <h2 class="mb-0">{{ "%.1f"|format(stats.completion_rate * 100) }}%</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card bg-dark text-white mb-3">
+        <div class="card-body">
+          <h5 class="card-title">Avg. Completion Time</h5>
+          <h2 class="mb-0">{{ "%.1f"|format(stats.average_completion_time) }} min</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Pending Review Tasks</h5>
+          <div>
+            <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse">
+              <i class="bi bi-funnel me-1"></i>Filter
+            </button>
+          </div>
+        </div>
+        <div class="collapse" id="filterCollapse">
+          <div class="card-body bg-light">
+            <form method="get" action="{{ url_for('human_review_dashboard') }}">
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label for="reviewType" class="form-label">Review Type</label>
+                  <select class="form-select form-select-sm" id="reviewType" name="type">
+                    <option value="">All Types</option>
+                    {% for type in review_types %}
+                    <option value="{{ type.value }}" {% if request.args.get('type') == type.value %}selected{% endif %}>
+                      {{ type.value|replace('_', ' ')|title }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label for="priority" class="form-label">Priority</label>
+                  <select class="form-select form-select-sm" id="priority" name="priority">
+                    <option value="">All Priorities</option>
+                    {% for priority in review_priorities %}
+                    <option value="{{ priority.value }}" {% if request.args.get('priority') == priority.value %}selected{% endif %}>
+                      {{ priority.value|title }}
+                    </option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label for="assignedTo" class="form-label">Assigned To</label>
+                  <input type="text" class="form-control form-control-sm" id="assignedTo" name="assigned_to" value="{{ request.args.get('assigned_to', '') }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                  <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+                  <a href="{{ url_for('human_review_dashboard') }}" class="btn btn-outline-secondary btn-sm ms-2">Clear</a>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-striped">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Document</th>
+                <th>Priority</th>
+                <th>Created</th>
+                <th>Assigned To</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if pending_reviews %}
+                {% for review in pending_reviews %}
+                <tr>
+                  <td>#{{ review.id }}</td>
+                  <td>
+                    <span class="badge {{ review.review_type.value|review_type_badge }}">
+                      {{ review.review_type.value|replace('_', ' ')|title }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if review.rfp_document %}
+                      RFP: {{ review.rfp_document.title|truncate(30) }}
+                    {% elif review.vendor_bid %}
+                      Bid: {{ review.vendor_bid.vendor_name|truncate(30) }}
+                    {% else %}
+                      Unknown
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="badge {{ review.priority.value|priority_badge }}">
+                      {{ review.priority.value|title }}
+                    </span>
+                  </td>
+                  <td>{{ review.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                  <td>
+                    {% if review.assigned_to %}
+                      {{ review.assigned_to }}
+                    {% else %}
+                      <span class="text-muted">Unassigned</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a href="{{ url_for('human_review_task', review_id=review.id) }}" class="btn btn-sm btn-primary">
+                      <i class="bi bi-eye me-1"></i>Review
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="7" class="text-center py-4">
+                    <p class="text-muted mb-0">No pending reviews found.</p>
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Reviews by Type</h5>
+        </div>
+        <div class="card-body">
+          <canvas id="reviewTypeChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Reviews by Status</h5>
+        </div>
+        <div class="card-body">
+          <canvas id="reviewStatusChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-check2-circle me-2"></i>Recently Completed Reviews</h5>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Completed By</th>
+                <th>Completed At</th>
+                <th>Time Taken</th>
+                <th>Agreement Level</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if completed_reviews %}
+                {% for review in completed_reviews %}
+                <tr>
+                  <td>#{{ review.id }}</td>
+                  <td>
+                    <span class="badge {{ review.review_type.value|review_type_badge }}">
+                      {{ review.review_type.value|replace('_', ' ')|title }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge {{ review.status.value|status_badge }}">
+                      {{ review.status.value|title }}
+                    </span>
+                  </td>
+                  <td>{{ review.completed_by }}</td>
+                  <td>{{ review.completed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                  <td>{{ "%.1f"|format(review.time_to_complete) }} min</td>
+                  <td>
+                    <div class="progress" style="height: 8px;" data-bs-toggle="tooltip" title="{{ "%.0f"|format(review.agreement_level * 100) }}% agreement">
+                      <div class="progress-bar {{ review.agreement_level|agreement_color }}" role="progressbar" style="width: {{ (review.agreement_level * 100)|int }}%"></div>
+                    </div>
+                  </td>
+                  <td>
+                    <a href="{{ url_for('human_review_details', review_id=review.id) }}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-eye me-1"></i>View
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="8" class="text-center py-4">
+                    <p class="text-muted mb-0">No completed reviews found.</p>
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize tooltips
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+  
+  // Reviews by Type Chart
+  var typeCtx = document.getElementById('reviewTypeChart').getContext('2d');
+  var typeChart = new Chart(typeCtx, {
+    type: 'pie',
+    data: {
+      labels: [
+        {% for type, count in stats.reviews_by_type.items() %}
+          '{{ type|replace('_', ' ')|title }}',
+        {% endfor %}
+      ],
+      datasets: [{
+        data: [
+          {% for type, count in stats.reviews_by_type.items() %}
+            {{ count }},
+          {% endfor %}
+        ],
+        backgroundColor: [
+          '#6f42c1', '#0d6efd', '#6c757d', '#198754', '#ffc107', '#dc3545'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: 'white'
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              var label = context.label || '';
+              var value = context.raw || 0;
+              var total = context.dataset.data.reduce((a, b) => a + b, 0);
+              var percentage = Math.round((value / total) * 100);
+              return label + ': ' + value + ' (' + percentage + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+  
+  // Reviews by Status Chart
+  var statusCtx = document.getElementById('reviewStatusChart').getContext('2d');
+  var statusChart = new Chart(statusCtx, {
+    type: 'bar',
+    data: {
+      labels: ['Pending', 'Approved', 'Rejected', 'Modified'],
+      datasets: [{
+        label: 'Count',
+        data: [
+          {{ stats.pending_reviews }},
+          {{ stats.approved_reviews }},
+          {{ stats.rejected_reviews }},
+          {{ stats.modified_reviews }}
+        ],
+        backgroundColor: [
+          '#ffc107',
+          '#198754',
+          '#dc3545',
+          '#0d6efd'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0
+          }
+        }
+      }
+    }
+  });
+});
+</script>
+{% endblock %}
