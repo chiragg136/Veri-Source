@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}AI Assistance - VeriSource{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row mb-4">
+    <div class="col">
+      <h1 class="mb-3"><i class="bi bi-robot me-2"></i>AI Assistant</h1>
+      <p class="lead">Get instant answers to your questions about procurement, RFPs, and vendor bids from our intelligent AI assistant.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Chat with VeriSource AI</h5>
+          <span class="badge bg-light text-dark" id="provider-badge">AI: Ready</span>
+        </div>
+        <div class="card-body p-0">
+          <div id="chat-messages" class="p-3" style="height: 500px; overflow-y: auto;">
+            <!-- Initial bot message -->
+            <div class="d-flex mb-3">
+              <div class="avatar bg-primary text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="bi bi-robot"></i>
+              </div>
+              <div class="message bg-dark p-3 rounded-3 shadow-sm">
+                <p class="mb-0">Hello! I'm your VeriSource AI Assistant. How can I help you with RFP analysis, bid evaluations, or procurement processes today?</p>
+              </div>
+            </div>
+          </div>
+          <div class="border-top p-3">
+            <form id="chat-form" class="d-flex">
+              <input type="text" id="chat-input" class="form-control me-2" placeholder="Type your question here...">
+              <button type="submit" class="btn btn-primary chat-send-button">
+                <i class="bi bi-send"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Suggested Questions</h5>
+        </div>
+        <div class="card-body">
+          <div class="suggested-questions">
+            <span class="suggested-question" data-question="What are the key components of a good RFP?">What are the key components of a good RFP?</span>
+            <span class="suggested-question" data-question="How do I evaluate vendor bids effectively?">How do I evaluate vendor bids effectively?</span>
+            <span class="suggested-question" data-question="What security requirements should I include in my RFP?">What security requirements should I include in my RFP?</span>
+            <span class="suggested-question" data-question="How can I identify risks in vendor proposals?">How can I identify risks in vendor proposals?</span>
+            <span class="suggested-question" data-question="What is the best way to compare multiple vendor bids?">What is the best way to compare multiple vendor bids?</span>
+            <span class="suggested-question" data-question="How do FISMA and FedRAMP compliance impact procurement?">How do FISMA and FedRAMP compliance impact procurement?</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const chatForm = document.getElementById('chat-form');
+  const chatInput = document.getElementById('chat-input');
+  const chatMessages = document.getElementById('chat-messages');
+  const providerBadge = document.getElementById('provider-badge');
+  const suggestedQuestions = document.querySelectorAll('.suggested-question');
+  
+  // Initialize chat history
+  let chatHistory = [];
+  
+  // Function to add a message to the chat
+  function addMessage(message, sender) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'd-flex mb-3';
+    
+    if (sender === 'user') {
+      messageDiv.innerHTML = `
+        <div class="avatar bg-secondary text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center ms-auto" style="width: 40px; height: 40px;">
+          <i class="bi bi-person"></i>
+        </div>
+        <div class="message user-message p-3 rounded-3 shadow-sm bg-primary text-white">
+          <p class="mb-0">${message}</p>
+        </div>
+      `;
+    } else {
+      messageDiv.innerHTML = `
+        <div class="avatar bg-primary text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+          <i class="bi bi-robot"></i>
+        </div>
+        <div class="message bot-message p-3 rounded-3 shadow-sm bg-dark">
+          <p class="mb-0">${message}</p>
+        </div>
+      `;
+    }
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // Add to chat history
+    chatHistory.push({
+      role: sender === 'user' ? 'user' : 'assistant',
+      content: message
+    });
+    
+    // Keep chat history to a reasonable size
+    if (chatHistory.length > 10) {
+      chatHistory = chatHistory.slice(chatHistory.length - 10);
+    }
+  }
+  
+  // Function to add a loading indicator to the chat
+  function addLoadingMessage() {
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'd-flex mb-3';
+    loadingDiv.innerHTML = `
+      <div class="avatar bg-primary text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+        <i class="bi bi-robot"></i>
+      </div>
+      <div class="message bot-message p-3 rounded-3 shadow-sm bg-dark">
+        <p class="mb-0">
+          <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+          Thinking...
+        </p>
+      </div>
+    `;
+    
+    chatMessages.appendChild(loadingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return loadingDiv;
+  }
+  
+  // Handle form submission
+  chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const userMessage = chatInput.value.trim();
+    if (!userMessage) return;
+    
+    // Add user message to chat
+    addMessage(userMessage, 'user');
+    
+    // Clear input
+    chatInput.value = '';
+    
+    // Show loading indicator
+    const loadingMessage = addLoadingMessage();
+    
+    try {
+      // Send message to API
+      const response = await fetch('/api/chatbot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          message: userMessage,
+          chat_history: chatHistory.filter(msg => msg.role === 'user') // Only send user messages
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get response from chatbot');
+      }
+      
+      const data = await response.json();
+      
+      // Remove loading message
+      chatMessages.removeChild(loadingMessage);
+      
+      // Add AI response to chat
+      addMessage(data.response, 'assistant');
+      
+      // Update provider badge
+      const provider = data.provider_info.provider;
+      const success = data.provider_info.success;
+      
+      if (success) {
+        providerBadge.textContent = `AI: ${provider.charAt(0).toUpperCase() + provider.slice(1)}`;
+        providerBadge.className = 'badge bg-light text-dark';
+      } else {
+        providerBadge.textContent = 'AI: Error';
+        providerBadge.className = 'badge bg-danger';
+      }
+      
+    } catch (error) {
+      console.error('Error:', error);
+      
+      // Remove loading message
+      chatMessages.removeChild(loadingMessage);
+      
+      // Add error message
+      addMessage("I'm sorry, I'm having trouble connecting to my services right now. Please try again later.", 'assistant');
+      
+      // Update provider badge
+      providerBadge.textContent = 'AI: Offline';
+      providerBadge.className = 'badge bg-danger';
+    }
+  });
+  
+  // Handle suggested questions
+  suggestedQuestions.forEach((question) => {
+    question.addEventListener('click', () => {
+      const questionText = question.dataset.question;
+      chatInput.value = questionText;
+      chatInput.focus();
+    });
+  });
+});
+</script>
+{% endblock %}

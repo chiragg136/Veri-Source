@@ -49,6 +49,14 @@ def reports():
         rfps = db.session.query(RFPDocument).all()
         return render_template('reports.html', rfps=rfps)
         
+@main_bp.route('/ai-assistance', methods=['GET'])
+def ai_assistance():
+    """
+    AI Assistance page with interactive chatbot interface.
+    This page allows users to interact with multiple AI models for procurement questions.
+    """
+    return render_template('ai_assistance.html')
+        
 @main_bp.route('/government-bidding', methods=['GET'])
 def government_bidding():
     """

@@ -59,7 +59,7 @@
         </div>
         <div class="collapse" id="filterCollapse">
           <div class="card-body bg-light">
-            <form method="get" action="{{ url_for('human_review_dashboard') }}">
+            <form method="get" action="{{ url_for('human_review.human_review_dashboard') }}">
               <div class="row g-3">
                 <div class="col-md-3">
                   <label for="reviewType" class="form-label">Review Type</label>
@@ -89,7 +89,7 @@
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
                   <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
-                  <a href="{{ url_for('human_review_dashboard') }}" class="btn btn-outline-secondary btn-sm ms-2">Clear</a>
+                  <a href="{{ url_for('human_review.human_review_dashboard') }}" class="btn btn-outline-secondary btn-sm ms-2">Clear</a>
                 </div>
               </div>
             </form>
