@@ -1,4 +1,4 @@
-/* Custom CSS for UniSphere */
+/* Custom CSS for VeriSource */
 
 /* Global styling */
 body {
@@ -164,7 +164,11 @@ body {
 
 /* Custom Color Styles */
 .navbar {
-  background-color: #f5f5dc !important; /* Cream color */
+  background-color: #f8f5e6 !important; /* Cream color */
+  padding: 1rem 0;
+  width: 100%;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .navbar .navbar-brand,
@@ -172,8 +176,20 @@ body {
   color: #333 !important; /* Darker text for better contrast on cream background */
 }
 
+.navbar-brand span {
+  font-weight: bold;
+  font-size: 1.5rem;
+  color: #333 !important;
+}
+
 h1, h2, h3, h4, h5, h6 {
   color: #0d6efd !important; /* Blue headings */
+}
+
+/* Main header styling in index.html */
+.jumbotron h1 {
+  font-size: 3.5rem;
+  color: #0d6efd !important;
 }
 
 /* Print styles */
@@ -312,75 +328,6 @@ h1, h2, h3, h4, h5, h6 {
   background-color: rgba(var(--bs-primary-rgb), 0.5);
 }
 
-/* Tooltip styling for contextual help */
-.terminology-tooltip {
-  cursor: help;
-  border-bottom: 1px dashed var(--bs-primary);
-  position: relative;
-}
-
-/* Gamification elements */
-.achievement-badge {
-  transition: all 0.3s ease;
-  position: relative;
-  cursor: pointer;
-}
-
-.achievement-badge:hover {
-  transform: scale(1.1);
-}
-
-.achievement-badge.locked {
-  filter: grayscale(100%);
-  opacity: 0.5;
-}
-
-.achievement-badge .badge-icon {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-.achievement-progress {
-  height: 5px;
-  background-color: rgba(var(--bs-primary-rgb), 0.2);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.achievement-progress .progress-fill {
-  height: 100%;
-  background-color: var(--bs-primary);
-}
-
-/* Animation effects */
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-in;
-}
-
-.animate-slide-up {
-  animation: slideUp 0.5s ease-out;
-}
-
-.animate-pulse {
-  animation: pulse 2s infinite;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
 /* Chatbot suggested questions */
 .suggested-question {
   display: inline-block;
@@ -468,4 +415,13 @@ h1, h2, h3, h4, h5, h6 {
 
 .data-freshness i {
   margin-right: 0.25rem;
+}
+
+/* Cream header in government section */
+.cream-header {
+  background-color: #f8f5e6;
+  color: #333;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 25px;
 }
