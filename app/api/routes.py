@@ -334,7 +334,6 @@ def get_bid_comparison(rfp_id):
     return jsonify(comparison_data)
 
 # Chatbot API
-@main_bp.route('/api/chatbot', methods=['POST'])
 def chatbot():
     """
     Chatbot API for user questions about RFPs and bids.
@@ -375,7 +374,6 @@ def chatbot():
     })
 
 # Security Assessment API
-@main_bp.route('/api/security/assessment/<int:bid_id>', methods=['GET'])
 def security_assessment(bid_id):
     """
     Assess a vendor bid against security requirements from the RFP.
@@ -410,7 +408,6 @@ def security_assessment(bid_id):
         return jsonify({"error": str(e)}), 500
 
 # Bid Risk Assessment API
-@main_bp.route('/api/risk/assessment/<int:bid_id>', methods=['GET'])
 def get_bid_risks(bid_id):
     """
     Get risk assessment for a specific vendor bid.
@@ -441,7 +438,6 @@ def get_bid_risks(bid_id):
         return jsonify({"error": str(e)}), 500
 
 # Bid Sentiment Analysis API
-@main_bp.route('/api/sentiment/analysis/<int:bid_id>', methods=['GET'])
 def get_bid_sentiment(bid_id):
     """
     Get sentiment analysis for a specific vendor bid.
@@ -472,7 +468,6 @@ def get_bid_sentiment(bid_id):
         return jsonify({"error": str(e)}), 500
 
 # Comprehensive Report Generation API
-@main_bp.route('/api/reports/infographic/<int:rfp_id>', methods=['GET'])
 def generate_infographic_report(rfp_id):
     """
     Generate a comprehensive infographic-style summary report for an RFP and its bids.
